@@ -1,0 +1,500 @@
+import { COOKIE_NAME } from "@shared/const";
+import { getSessionCookieOptions } from "./_core/cookies";
+import { invokeLLM } from "./_core/llm";
+import { buildPrompt } from './lib/readings/buildPrompt';
+import { systemRouter } from "./_core/systemRouter";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { saveChart, getUserCharts, getChart, deleteChart } from "./db";
+import { calculateChart, formatChartForReading, getHouseCuspInfo } from "./ephemeris";
+import { z } from "zod";
+import Anthropic from "@anthropic-ai/sdk";
+import { detectFixedStarConjunctions, formatStarConjunctions } from "./fixedStars";
+import { getNakshatraAt } from "./nakshatra";
+import { getDecanFlavor, getDecanRuler } from "./decan";
+import { getDegreeMeaning } from "./sabianSymbols";
+import { getLunarMansion } from "./kstar-planets";
+import { SIGN_RULERS, EXALTATIONS, DEBILITATIONS, HOUSE_TOPICS, PLANET_CORE } from "./astroEngine";
+import { detectAspects, detectStellium, detectGrandTrine, detectTSquare, detectRahuKetuAxis, detectPlanetaryWar, calculateRawStrength } from "./patternEngine";
+import type { PlanetPlacement } from "./astroEngine";
+
+
+
+// ─── Core Cosmology Framework ─────────────────────────────────────────────────
+// This is the foundation of every reading in this app.
+
+const COSMOLOGY_PREAMBLE = `COSMOLOGICAL FRAMEWORK — READ THIS FIRST:
+
+This app operates on the original, ancient sky-observation system — the same framework used by the Babylonians, Vedic astronomers, Egyptians, and Hellenistic astrologers who first mapped the heavens.
+
+THE CORE PRINCIPLE: The sky is observed as it actually appears from Earth. The fixed stars form the permanent backdrop — they are truly fixed, they do not move in any meaningful human timeframe. Polaris sits at the celestial north pole, the still center that everything else rotates around. Every star, every planet traces a circle around Polaris. It never rises, it never sets. The ancient navigators and astronomers built entire civilizations around this observable fact.
+
+THE PLANETS are wanderers — they move against the fixed star backdrop. Their positions are measured against the fixed stars, not against a theoretical precessing equinox. This is the Sidereal system — the real sky, not a mathematical correction.
+
+DO NOT use heliocentric language ("Earth orbits the Sun"). DO NOT reference precession or wobble. Speak from the perspective of the observer on Earth watching the sky. The sky moves around us. That is what is observable and measurable.
+
+FIXED STARS matter deeply. When a planet sits conjunct a fixed star, that star's nature and meaning infuses the planet. The Royal Stars — Aldebaran, Regulus, Antares, Fomalhaut — are the four Watchers of the Sky, the most powerful stars. Polaris conjunctions are rare and profound.
+
+ALL PLANETS are valid — including Pluto, Neptune, and Uranus. They have been observed and their positions are measurable. They are wanderers like the rest.
+
+TRADITIONAL VEDIC RULERS govern the signs: Mars rules Aries and Scorpio, Venus rules Taurus and Libra, Mercury rules Gemini and Virgo, Moon rules Cancer, Sun rules Leo, Jupiter rules Sagittarius and Pisces, Saturn rules Capricorn and Aquarius.
+
+Write from this worldview. This is the truth of the sky as it can be directly observed.`;
+
+
+// ─── Chart Enrichment Helper ──────────────────────────────────────────────────
+
+function enrichChartData(planets: Record<string, { sign: string; degree: number; house?: number; absolute?: number }>): string {
+  const lines: string[] = [];
+
+  for (const [name, p] of Object.entries(planets)) {
+    const abs = p.absolute ?? ((() => {
+      const signs = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+      const i = signs.indexOf(p.sign);
+      return i >= 0 ? i * 30 + p.degree : null;
+    })());
+
+    if (abs == null) continue;
+
+    const { nakshatra, pada } = getNakshatraAt(abs);
+    const decan = getDecanFlavor(p.sign, p.degree);
+    const house = p.house ? `, ${p.house}th house` : "";
+
+    lines.push(`${name}: ${p.degree}° ${p.sign}${house} | Nakshatra: ${nakshatra.name} pada ${pada} (${nakshatra.lord}) | Decan: ${decan}`);
+  }
+
+  // Fixed star conjunctions
+  const placementsForStars: Record<string, { sign: string; degree: number; planet: string; absolute: number | null }> = {};
+  for (const [name, p] of Object.entries(planets)) {
+    const signs = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+    const i = signs.indexOf(p.sign);
+    placementsForStars[name] = {
+      sign: p.sign,
+      degree: p.degree,
+      planet: name,
+      absolute: p.absolute ?? (i >= 0 ? i * 30 + p.degree : null),
+    };
+  }
+
+  const conjunctions = detectFixedStarConjunctions(placementsForStars);
+  const starText = formatStarConjunctions(conjunctions);
+
+  return lines.join("\n") + "\n\nFIXED STAR CONJUNCTIONS:\n" + starText;
+}
+
+// ─── OCR Router ───────────────────────────────────────────────────────────────
+
+const ocrRouter = router({
+  extractText: publicProcedure
+    .input(z.object({
+      images: z.array(z.string()).min(1).max(10),
+      type: z.enum(["natal", "transit"]),
+    }))
+    .mutation(async ({ input }) => {
+      const { images, type } = input;
+
+      const systemPrompt = type === "natal"
+        ? `You are an expert ancient sky-chart reader. Extract ALL planetary and fixed star placements from the provided screenshot(s).
+Output ONLY the raw placement data, one item per line, in this exact format:
+Planet: Degree° Arcminutes' Sign, Nth house
+
+CRITICAL RULES:
+- NEVER write "Transit" before any planet name — these are NATAL placements
+- Map "North Node" or "North Node (True)" → write as "Rahu"
+- Map "South Node" or "South Node (True)" → write as "Ketu"
+- Map "Ascendant" or "AC" → write as "Asc"
+- Include ALL planets shown: Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto, Rahu, Ketu, Asc
+- Include fixed stars if shown (Antares, Aldebaran, Regulus, Polaris, Sirius, Spica, etc.)
+- Note Rx (retrograde) if shown
+- Include arcminutes and house number if visible
+- Do NOT include any explanation, headers, or extra text — only the placement lines
+
+Example output:
+Sun: 3° 27' Scorpio, 12th house
+Moon: 18° 55' Gemini, 7th house
+Mercury Rx: 18° 47' Libra, 11th house
+Pluto: 13° 32' Libra, 11th house
+Rahu: 25° 37' Pisces, 4th house
+Antares: 15° 00' Scorpio, 12th house`
+        : `You are an expert ancient sky-chart reader. Extract ALL current planetary positions from the provided screenshot(s).
+Output ONLY the raw transit data, one planet per line, in this exact format:
+Transit Planet: Degree° Sign
+
+Rules:
+- Include ALL planets: Transit Sun, Transit Moon, Transit Mercury, Transit Venus, Transit Mars, Transit Jupiter, Transit Saturn, Transit Uranus, Transit Neptune, Transit Pluto, Transit Rahu, Transit Ketu
+- Note Rx (retrograde) if shown
+- If house number is visible, include it
+- Do NOT include any explanation, headers, or extra text`;
+
+      const imageContents = images.map((imgUrl) => ({
+        type: "image_url" as const,
+        image_url: { url: imgUrl, detail: "high" as const },
+      }));
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              ...imageContents,
+              { type: "text" as const, text: `Extract all ${type === "natal" ? "natal birth chart" : "current transit"} planetary placements from these ${images.length} screenshot(s). Output only the placement lines.` },
+            ],
+          },
+        ],
+      });
+
+      const rawContent = response.choices?.[0]?.message?.content ?? "";
+      const extracted = typeof rawContent === "string" ? rawContent : "";
+      return { text: extracted.trim() };
+    }),
+});
+
+// ─── AI Interpretation Router ─────────────────────────────────────────────────
+
+const aiRouter = router({
+  interpretChart: publicProcedure
+    .input(z.object({
+      placements: z.string().min(10),
+      context: z.string().optional(),
+      mode: z.enum(["natal", "transit", "full"]),
+      transitPlacements: z.string().optional(),
+      fixedStarConjunctions: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { placements, context, mode, transitPlacements, fixedStarConjunctions } = input;
+
+      // Auto-enrich if structured data available (fallback to passed-in fixedStarConjunctions)
+      const starSection = fixedStarConjunctions && fixedStarConjunctions !== 'No exact fixed star conjunctions detected.'
+        ? `\nFIXED STAR CONJUNCTIONS DETECTED:\n${fixedStarConjunctions}\n`
+        : '';
+
+      let userPrompt = "";
+
+      if (mode === "natal") {
+        userPrompt = `Here is the natal chart:
+
+${placements}
+${starSection}
+${context ? `\nPersonal context from the person: ${context}\n` : ""}
+
+Please write a complete natal chart reading. This person wants to understand themselves deeply — who they are, how they think, what drives them, what their challenges and gifts are. Write as if you are speaking directly to them.
+
+Use these exact section headers:
+
+## MIND
+How does this person think and communicate? Interpret Mercury's sign, house, and condition. What is their mental style — how do they process information, make decisions, express themselves? Include the Moon's influence on the mind. Be specific about what Mercury in ${placements.includes('Libra') ? 'Libra' : 'their sign'} actually means for how they think day to day.
+
+## SOUL
+What does this person need to feel whole? Interpret the Moon — their emotional nature, what nourishes them, what wounds them, how they love and need to be loved. Include Venus. Be honest about the emotional patterns this chart shows.
+
+## SPIRIT
+What is this person here to do? Interpret the Sun — their core identity, life purpose, where they're meant to shine. Include Jupiter. What is the dharmic path this chart points toward?
+
+## KEY PLACEMENTS
+Identify the 2-3 most powerful, unusual, or significant placements in this chart. These could be planets in their own sign or exaltation, debilitated planets, planets in angular houses, or any placement that stands out as defining. Explain what each one means for this person's actual life.
+${starSection ? `\nAlso interpret any fixed star conjunctions listed above — these are ancient sky markers that infuse the planet with the star's power and meaning.\n` : ''}
+## SYNTHESIS
+What is the overall story of this chart? What are the main themes — the tensions, the gifts, the life lessons? If you could tell this person one true thing about who they are based on this chart, what would it be?
+
+Write in flowing paragraphs. Be personal, specific, and honest. This person is reading their chart to understand their life — give them something real.`;
+
+      } else if (mode === "transit") {
+        userPrompt = `Here are the current planetary positions in the sky:
+
+${placements}
+${starSection}
+${context ? `\nContext: ${context}\n` : ""}
+
+Write a practical, grounded reading of what these planetary positions mean for a person's actual daily life right now. No cosmic poetry. No Star Wars language. No "the wanderers speak" or "the serpent whispers." Speak plainly, like a trusted advisor who happens to understand astrology.
+
+Every observation must connect to something real — a decision, a relationship, a pattern in daily life, something the person is actually experiencing or about to experience.
+
+## WHAT IS ACTIVE RIGHT NOW
+Name each major planet, its sign, and what it concretely means for daily life. Not what the energy "symbolizes" — what it actually produces in a person's week. What decisions does it affect? What comes easier? What gets harder? Be specific.
+
+## WHAT TO PAY ATTENTION TO
+What are the 2-3 most significant things happening in the sky right now that will actually affect this person's life? Name them plainly. What do they mean in practical terms — at work, in relationships, in their mental state, in their finances?
+
+## WHAT TO DO WITH THIS
+Concrete, actionable guidance for this specific planetary weather. Not "lean into the energy" — actual things a person can do, decide, or watch for in the next few weeks given what the sky is doing right now.`;
+
+      } else {
+        // Full natal + transit
+        userPrompt = `Here is the natal chart:
+${placements}
+
+Current sky positions:
+${transitPlacements || ""}
+${starSection}
+${context ? `\nPersonal context: ${context}\n` : ""}
+
+Write a complete reading showing how the current sky is activating this natal chart right now. This is personal — show how these specific transits are hitting this specific person's chart.
+
+## CURRENT ACTIVATIONS
+What are the most significant contacts between the current sky and this natal chart? Name the specific transit planet, the natal planet it's hitting, the aspect, and what it means for this person right now.
+
+## MIND RIGHT NOW
+How is the current sky affecting this person's thinking, communication, and mental state?
+
+## SOUL RIGHT NOW
+How is the current sky affecting this person's emotional life, relationships, and inner world?
+
+## SPIRIT RIGHT NOW
+How is the current sky affecting this person's sense of purpose, direction, and confidence?
+
+## THE BIGGER PICTURE
+What is the overall theme of this period for this person? What should they focus on, watch out for, or lean into right now?
+
+Write in flowing paragraphs. Be specific — name the planets, the signs, the houses. This is a real person reading about their real life.`;
+      }
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: COSMOLOGY_PREAMBLE },
+          { role: "user", content: userPrompt },
+        ],
+      });
+
+      const rawContent = response.choices?.[0]?.message?.content ?? "";
+      const reading = typeof rawContent === "string" ? rawContent : "";
+      return { reading: reading.trim() };
+    }),
+});
+
+// ─── Ephemeris Router ───────────────────────────────────────────────────────────────
+
+const ephemerisRouter = router({
+  calculate: publicProcedure
+    .input(z.object({
+      year: z.number().int().min(1900).max(2100),
+      month: z.number().int().min(1).max(12),
+      day: z.number().int().min(1).max(31),
+      hour: z.number().min(0).max(23),
+      minute: z.number().min(0).max(59),
+      latitude: z.number().min(-90).max(90),
+      longitude: z.number().min(-180).max(180),
+      altitude: z.number().min(0).max(9000).default(0),
+    }))
+    .mutation(async ({ input }) => {
+      const date = new Date(Date.UTC(
+        input.year, input.month - 1, input.day,
+        input.hour, input.minute, 0
+      ));
+      
+      const observer = {
+        latitude: input.latitude,
+        longitude: input.longitude,
+        altitude: input.altitude,
+      };
+      
+      const result = await calculateChart(date, observer);
+      const readingText = formatChartForReading(result);
+      
+      const houseCusps = getHouseCuspInfo(result);
+      const asc = result.houses.ascendant;
+      const desc = (asc + 180) % 360;
+      const mc = result.houses.mc;
+      const ic = (mc + 180) % 360;
+
+      return {
+        planets: result.planets,
+        houses: result.houses,
+        houseCusps,
+        angles: { asc, desc, mc, ic },
+        ayanamsa: result.ayanamsa,
+        readingText,
+      };
+    }),
+});
+
+// ─── Charts Router ───────────────────────────────────────────────────────────────
+
+const chartsRouter = router({
+  save: protectedProcedure
+    .input(z.object({
+      chartName: z.string().min(1).max(255),
+      placements: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) throw new Error("Not authenticated");
+      await saveChart(ctx.user.id, input.chartName, input.placements);
+      return { success: true };
+    }),
+  
+  list: protectedProcedure
+    .query(async ({ ctx }) => {
+      if (!ctx.user) throw new Error("Not authenticated");
+      return await getUserCharts(ctx.user.id);
+    }),
+  
+  load: protectedProcedure
+    .input(z.object({ chartId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user) throw new Error("Not authenticated");
+      return await getChart(input.chartId, ctx.user.id);
+    }),
+  
+  delete: protectedProcedure
+    .input(z.object({ chartId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) throw new Error("Not authenticated");
+      await deleteChart(input.chartId, ctx.user.id);
+      return { success: true };
+    }),
+});
+
+
+// ─── Synthesize Router ────────────────────────────────────────────────────────
+
+function buildSemanticBlock(): string {
+  const houseLines = Object.entries(HOUSE_TOPICS)
+    .map(([n, v]) => `  House ${n}: ${v}`)
+    .join("\n");
+
+  const planetLines = Object.entries(PLANET_CORE)
+    .map(([planet, dims]) =>
+      `  ${planet}\n    mind:   ${dims.mind}\n    soul:   ${dims.soul}\n    spirit: ${dims.spirit}`
+    )
+    .join("\n\n");
+
+  return `
+━━━ SEMANTIC REFERENCE — USE THESE EXACT MEANINGS ━━━
+
+HOUSE MEANINGS
+When a planet's house number is known, interpret it through this vocabulary.
+Do not substitute generic house keywords — use these specific ones.
+${houseLines}
+
+PLANET CORE MEANINGS
+Each planet operates on three dimensions. Use the relevant dimension(s)
+depending on which pillar (Mind / Soul / Spirit) you are writing about.
+${planetLines}
+
+━━━ END SEMANTIC REFERENCE ━━━`;
+}
+
+const synthesizeRouter = router({
+  synthesize: publicProcedure
+    .input(z.object({
+      chartData: z.any(),
+      userQuestion: z.string().optional(),
+      systemPrompt: z.string().optional(),
+      engineContext: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { chartData, userQuestion, systemPrompt, engineContext } = input;
+
+      const anthropic = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      });
+
+      const defaultPrompt = `You are a skilled astrologer operating within the ancient sky-observation tradition — Babylonian, Vedic, Hellenistic, Arab, and Egyptian sources combined.
+
+${buildSemanticBlock()}
+
+CRITICAL INSTRUCTION — FIXED STARS:
+If the enriched chart data contains FIXED STAR CONJUNCTIONS, especially Royal Stars (Aldebaran, Regulus, Antares, Fomalhaut), lead the reading with them. Fixed star conjunctions are the most ancient and powerful layer of any chart. A planet conjunct a Royal Star is a defining signature of that person's life — it overrides sign and house interpretation in terms of prominence. Name the star, name its tradition, explain what it means for this specific planet and person. Give it full paragraphs, not a passing mention.
+
+Multiple fixed star conjunctions in one chart are extremely rare and must be treated as the dominant theme of the reading.
+
+INSTRUCTION — ROYAL STAR WEIGHT:
+When Venus, Sun, Moon, or Jupiter conjunct a Royal Star — this is a mark of someone cosmically designated for their field. Do not soften this. State it plainly and build the reading around it.
+
+BEFORE WRITING — ask yourself three questions about this specific chart:
+1. What is the strongest force in this chart?
+2. What is the rarest force in this chart?
+3. What would make this chart recognizable from a distance?
+Lead with those themes. Do not spend equal space on minor and major indicators.
+
+READING STRUCTURE:
+1. Open with fixed star conjunctions if present — these are the headline
+2. Then move through the chart by pillar:
+   - MIND: governed by Mercury (analysis, language, nervous system) and Moon (habit mind, memory).
+     Use the PLANET CORE meanings above. Reference the house using HOUSE MEANINGS above.
+   - SOUL: governed by Moon (nourishment, belonging, safety) and Venus (love, attachment, self-worth).
+     Use the PLANET CORE meanings above. Reference the house using HOUSE MEANINGS above.
+   - SPIRIT: governed by Sun (will, identity, life-force) and Jupiter (meaning-making, blessing, dharma).
+     Use the PLANET CORE meanings above. Reference the house using HOUSE MEANINGS above.
+3. KEY PLACEMENTS: name the 2–3 most powerful placements — exaltations, debilitations, angular houses,
+   rare conjunctions. Use the house meanings to describe what life arena each one operates in.
+4. Close with dharmic synthesis — the overall story, the central tension, the one true thing.
+
+DIGNITY RULES (apply when relevant):
+- Exalted planet: operating at peak expression of its PLANET CORE meaning
+- Debilitated planet: the PLANET CORE meaning is distorted, suppressed, or overcompensated
+- Own sign: the planet expresses its PLANET CORE meaning directly, without friction
+- Retrograde: the PLANET CORE meaning turns inward — internalized, delayed, or intensified privately
+
+Write with directness and depth. No generic affirmations. Speak to what is actually in the chart.
+Every paragraph should be traceable back to a specific placement. This is a real person's life.`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 8192,
+        system: systemPrompt || defaultPrompt,
+        messages: [{ role: "user", content: `Chart data:\n${JSON.stringify(chartData, null, 2)}\n\nEnriched Analysis:\n${enrichChartData(chartData)}${engineContext ? "\n\nEngine Pillar Scores & Activations:\n" + engineContext : ""}\n\nQuestion: ${userQuestion || "Please provide a general reading."}` }]
+      });
+
+      return { reading: (response.content[0] as any).text };
+    }),
+});
+const natalPlacementRouter = router({
+  getReading: publicProcedure
+    .input(z.object({
+      planet:  z.string(),
+      degree:  z.string(),
+      sign:    z.string(),
+      house:   z.string(),
+      section: z.enum(["core","nakshatra","fixed_star","career","relationships",
+                        "home","mind","health","daily","destiny","synthesis","mirror"]),
+      aspects: z.array(z.object({
+        type:    z.string(),
+        planet2: z.string(),
+      })).optional().default([]),
+    }))
+    .mutation(async ({ input }) => {
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+      const prompt = buildPrompt(
+        input.planet,
+        input.degree,
+        input.sign,
+        input.house,
+        input.section,
+        input.aspects,
+      );
+
+      const response = await anthropic.messages.create({
+        model:      "claude-sonnet-4-6",
+        max_tokens: 4000,
+        messages:   [{ role: "user", content: prompt }],
+      });
+
+      const text = response.content
+        .map(b => b.type === "text" ? b.text : "")
+        .join("");
+
+      return { reading: text };
+    }),
+});
+
+// ─── App Router ───────────────────────────────────────────────────────────────
+
+export const appRouter = router({
+  system: systemRouter,
+  auth: router({
+    me: publicProcedure.query(opts => opts.ctx.user),
+    logout: publicProcedure.mutation(({ ctx }) => {
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      return { success: true } as const;
+    }),
+  }),
+  ocr: ocrRouter,
+  ai: aiRouter,
+  charts: chartsRouter,
+  ephemeris: ephemerisRouter,
+  synthesize: synthesizeRouter,
+  natalPlacement: natalPlacementRouter,
+});
+export type AppRouter = typeof appRouter;

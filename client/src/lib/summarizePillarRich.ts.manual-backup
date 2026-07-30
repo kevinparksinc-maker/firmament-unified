@@ -1,0 +1,405 @@
+import {
+  Activation,
+  PillarResult,
+  PillarSummary,
+  PlanetPlacement,
+  SIGN_RULERS,
+  EXALTATIONS,
+  DEBILITATIONS,
+  SIGN_ORDER,
+  stateFromScore,
+} from './astroEngine';
+
+const PILLAR_DEPS: Record<string, string[]> = {
+  mind:     ['Mercury', 'Moon'],
+  soul:     ['Sun', 'Jupiter'],
+  spirit:   ['Moon', 'Venus'],
+  pressure: ['Saturn', 'Mars'],
+};
+
+const NAKSHATRA_SEQUENCE = [
+  'Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra',
+  'Punarvasu','Pushya','Ashlesha','Magha','PurvaPhalguni','UttaraPhalguni',
+  'Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha',
+  'Mula','PurvaAshadha','UttaraAshadha','Shravana','Dhanishtha',
+  'Shatabhisha','PurvaBhadrapada','UttaraBhadrapada','Revati',
+];
+
+const NAKSHATRA_DATA: Record<string, { name: string; shakti: string; shadow: string }> = {
+  Ashwini:          { name:'The Healer',       shakti:'swift healing and initiation',                shadow:'impatience that wounds before it heals' },
+  Bharani:          { name:'The Bearer',        shakti:'holding life and death at once',              shadow:'moral heaviness that cannot release' },
+  Krittika:         { name:'The Cutter',        shakti:'purification through fire',                   shadow:'aggression without a worthy cause' },
+  Rohini:           { name:'The Fertile One',   shakti:'growth and creative abundance',               shadow:'possessiveness that strangles what it loves' },
+  Mrigashira:       { name:'The Seeker',        shakti:'searching for what is divine',                shadow:'restless dissatisfaction that never arrives' },
+  Ardra:            { name:'The Storm',         shakti:'transformation through destruction',          shadow:'grief turned outward as destruction' },
+  Punarvasu:        { name:'The Return',        shakti:'renewal and restoration after loss',          shadow:'over-optimism that ignores what was learned' },
+  Pushya:           { name:'The Nourisher',     shakti:'sustaining and protecting others',            shadow:'over-nurturing that prevents growth' },
+  Ashlesha:         { name:'The Serpent',       shakti:'penetrating insight and binding wisdom',      shadow:'manipulation that poisons the well' },
+  Magha:            { name:'The Throne',        shakti:'ancestral power and royal authority',         shadow:'pride built on lineage rather than merit' },
+  PurvaPhalguni:    { name:'The Fruit',         shakti:'creative and procreative power',              shadow:'indulgence that drains the vessel' },
+  UttaraPhalguni:   { name:'The Covenant',      shakti:'patronage and mutual support',                shadow:'dependency dressed as loyalty' },
+  Hasta:            { name:'The Hand',          shakti:'skill, craft, and manifestation',             shadow:'cunning used without integrity' },
+  Chitra:           { name:'The Jewel',         shakti:'creative brilliance and beauty',              shadow:'vanity that mistakes appearance for substance' },
+  Swati:            { name:'The Sword',         shakti:'independence and self-sufficiency',           shadow:'scattered energy with no direction' },
+  Vishakha:         { name:'The Fork',          shakti:'achievement through single-minded focus',     shadow:'envy and rivalry that burns the self' },
+  Anuradha:         { name:'The Friend',        shakti:'loyalty and follow-through',                  shadow:'loyalty that cannot set its own limits' },
+  Jyeshtha:         { name:'The Elder',         shakti:'senior wisdom and earned authority',          shadow:'authority claimed without being earned' },
+  Mula:             { name:'The Root',          shakti:'dissolution and deep investigation',          shadow:'destruction pursued for its own sake' },
+  PurvaAshadha:     { name:'The Invincible',    shakti:'invigoration and purification',               shadow:'pride that comes before the fall' },
+  UttaraAshadha:    { name:'The Victor',        shakti:'unchallengeable and lasting victory',         shadow:'rigidity after conquest that stops growth' },
+  Shravana:         { name:'The Listener',      shakti:'deep connection through learning',            shadow:'gossip and rumor passed as knowledge' },
+  Dhanishtha:       { name:'The Drum',          shakti:'abundance, rhythm, and fame',                 shadow:'placing material above spiritual' },
+  Shatabhisha:      { name:'The Healer',        shakti:'healing through solitude and silence',        shadow:'isolation used as avoidance' },
+  PurvaBhadrapada:  { name:'The Burning Pair',  shakti:'purification through intense fire',           shadow:'fanaticism that burns everything nearby' },
+  UttaraBhadrapada: { name:'The Depths',        shakti:'wisdom gained through renunciation',          shadow:'inertia disguised as peace' },
+  Revati:           { name:'The Nurturer',      shakti:'nourishing all journeys to completion',       shadow:'over-attachment to endings and the past' },
+};
+
+const SIGN_QUALITIES: Record<string, string> = {
+  Aries:'initiating, direct, combative — acts before it thinks',
+  Taurus:'grounding, patient, fixed — holds its position',
+  Gemini:'dual, restless, connective — moves between worlds',
+  Cancer:'protective, intuitive, cyclical — feels before it speaks',
+  Leo:'radiant, proud, expressive — needs to be seen',
+  Virgo:'analytical, refining, service-oriented — finds the flaw',
+  Libra:'balancing, relational — weighs every option before moving',
+  Scorpio:'penetrating, transformative, intense — goes all the way down',
+  Sagittarius:'expansive, philosophical, restless — aims at the horizon',
+  Capricorn:'disciplined, ambitious, structured — builds for the long run',
+  Aquarius:'detached, innovative, fixed in principle — stands apart',
+  Pisces:'dissolving, receptive, spiritual — merges with everything',
+};
+
+const HOUSE_THEMES: Record<number, string> = {
+  1:'identity, how you enter a room, first impressions',
+  2:'money, resources, your voice and self-worth',
+  3:'communication, siblings, short trips, daily environment',
+  4:'home, family, your roots and inner foundation',
+  5:'creativity, children, romance, self-expression',
+  6:'daily work, health, conflict, debt, people who oppose you',
+  7:'partnerships, contracts, open enemies',
+  8:'death, transformation, other people\'s money, what is hidden',
+  9:'philosophy, long travel, higher learning, beliefs',
+  10:'career, public reputation, what the world sees you doing',
+  11:'networks, gains, your ambitions and allies',
+  12:'isolation, hidden enemies, spiritual work, what you lose',
+};
+
+const SIGN_ELEMENTS: Record<string, string> = {
+  Aries:'fire', Leo:'fire', Sagittarius:'fire',
+  Taurus:'earth', Virgo:'earth', Capricorn:'earth',
+  Gemini:'air', Libra:'air', Aquarius:'air',
+  Cancer:'water', Scorpio:'water', Pisces:'water',
+};
+
+function ordinal(n: number): string {
+  const s = ['th','st','nd','rd'], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function getNakshatra(absoluteDegree: number | null): string | null {
+  if (absoluteDegree === null || isNaN(absoluteDegree)) return null;
+  const index = Math.floor((absoluteDegree % 360) / (360 / 27));
+  return NAKSHATRA_SEQUENCE[index] ?? null;
+}
+
+function getChartRulers(natal: Record<string, PlanetPlacement>): string[] {
+  const rulers: string[] = [];
+  const sun = natal['Sun'];
+  if (sun?.sign) { const r = SIGN_RULERS[sun.sign]; if (r) rulers.push(r); }
+  const asc = natal['Asc'];
+  if (asc?.sign) { const r = SIGN_RULERS[asc.sign]; if (r && !rulers.includes(r)) rulers.push(r); }
+  return rulers;
+}
+
+function rulershipBoost(planet: string, chartRulers: string[]): number {
+  return chartRulers.includes(planet) ? 1.4 : 1.0;
+}
+
+const ASPECT_ACTIONS: Record<string, Record<string, string>> = {
+  Saturn:  { conjunction:'is sitting directly on top of', opposition:'is forcing a face-off with', square:'is pressing hard against', trine:'is building structure around', sextile:'is quietly disciplining' },
+  Jupiter: { conjunction:'is opening a direct door for', opposition:'is overextending across from', square:'is offering growth under friction to', trine:'is flowing expansion into', sextile:'is hinting at opportunity around' },
+  Mars:    { conjunction:'is igniting directly', opposition:'is forcing a confrontation with', square:'is creating urgent friction with', trine:'is driving energy into', sextile:'is activating with edge' },
+  Rahu:    { conjunction:'is obsessively amplifying', opposition:'is pulling unfamiliar energy toward', square:'is disrupting through ambition', trine:'is accelerating desire around', sextile:'is quietly expanding' },
+  Ketu:    { conjunction:'is detaching and dissolving', opposition:'is creating withdrawal from', square:'is destabilizing through release', trine:'is refining through letting go of', sextile:'is loosening the grip on' },
+  Sun:     { conjunction:'is spotlighting directly', opposition:'is illuminating the tension with', square:'is spotlighting under pressure', trine:'is illuminating with ease', sextile:'is briefly highlighting' },
+  Venus:   { conjunction:'is softening and beautifying', opposition:'is pulling toward relationship tension with', square:'is creating desire friction with', trine:'is flowing grace into', sextile:'is adding warmth around' },
+  Mercury: { conjunction:'is activating thought directly around', opposition:'is scattering focus around', square:'is stirring mental friction with', trine:'is clarifying with ease around', sextile:'is adding mental sharpness to' },
+  Moon:    { conjunction:'is coloring the emotional body of', opposition:'is pulling the emotional tide around', square:'is creating emotional friction with', trine:'is flowing feeling into', sextile:'is adding emotional color to' },
+};
+
+function buildActivationSentence(act: Activation, natal: Record<string, PlanetPlacement>, chartRulers: string[]): string {
+  const verb = ASPECT_ACTIONS[act.transitPlanet]?.[act.aspect] ?? `is activating by ${act.aspect}`;
+  const orbStr = act.orb != null ? ` (${act.orb.toFixed(1)}° orb)` : '';
+  const rulerNote = chartRulers.includes(act.natalPlanet) ? ` — this planet rules your chart, so this hit carries extra weight` : '';
+  const nPlace = natal[act.natalPlanet];
+  const nk = nPlace?.absolute != null ? getNakshatra(nPlace.absolute) : null;
+  const nkData = nk ? NAKSHATRA_DATA[nk] : null;
+  const nkNote = nkData ? ` The shakti here is ${nkData.shakti}.` : '';
+  const houseNote = nPlace?.house ? ` This is landing in the area of your life covering ${HOUSE_THEMES[nPlace.house] ?? `the ${ordinal(nPlace.house)} house`}.` : '';
+  return `Transit ${act.transitPlanet} ${verb} your natal ${act.natalPlanet}${orbStr}${rulerNote}.${nkNote}${houseNote}`;
+}
+
+export function scorePillarFull(
+  name: 'mind' | 'soul' | 'spirit' | 'pressure',
+  natal: Record<string, PlanetPlacement>,
+  transits: Record<string, PlanetPlacement>,
+  activations: Activation[]
+): PillarResult {
+  const deps = PILLAR_DEPS[name];
+  const chartRulers = getChartRulers(natal);
+  const isPressure = name === 'pressure';
+  let score = isPressure ? 0 : 50;
+  const reasons: string[] = [];
+
+  if (!isPressure) {
+    for (const planet of deps) {
+      const nat = natal[planet];
+      if (!nat) continue;
+      const boost = rulershipBoost(planet, chartRulers);
+      if (EXALTATIONS[planet] === nat.sign)   { score += Math.round(10 * boost); reasons.push(`${planet} is exalted in ${nat.sign} — strong natural support.`); }
+      if (DEBILITATIONS[planet] === nat.sign) { score -= Math.round(10 * boost); reasons.push(`${planet} is debilitated in ${nat.sign} — carries extra difficulty.`); }
+      if (SIGN_RULERS[nat.sign] === planet)   { score += Math.round(6 * boost);  reasons.push(`${planet} is in its own sign — expresses directly and comfortably.`); }
+      if (nat.rx && ['Mercury','Venus','Jupiter','Saturn','Mars'].includes(planet)) { score -= 2; reasons.push(`${planet} retrograde — turns inward, works but not in a straight line.`); }
+      if (nat.combust) { score -= 5; reasons.push(`${planet} combust — signal burned and hard to read.`); }
+      if (nat.cazimi)  { score += Math.round(6 * boost); reasons.push(`${planet} cazimi — rare precision and clarity.`); }
+    }
+  }
+
+  const targetSet = new Set(deps);
+  for (const act of activations.slice(0, 18)) {
+    if (isPressure) {
+      if (!['Saturn','Mars'].includes(act.transitPlanet)) continue;
+    } else {
+      if (!targetSet.has(act.natalPlanet)) continue;
+    }
+    const p = act.transitPlanet;
+    const hard = act.aspect === 'square' || act.aspect === 'opposition';
+    const conj = act.aspect === 'conjunction';
+    const soft = act.aspect === 'trine' || act.aspect === 'sextile';
+    const boost = rulershipBoost(act.natalPlanet, chartRulers);
+    const rulerReduction = chartRulers.includes(p) ? 0.6 : 1.0;
+
+    if (isPressure) {
+      if (p === 'Saturn') { score += Math.round((hard ? 15 : conj ? 12 : soft ? 4 : 8) * rulerReduction); reasons.push(chartRulers.includes(p) ? `Saturn is your chart ruler — heavy but you have capacity to work with it.` : `Saturn pressing on ${act.natalPlanet} — expect delays or restriction.`); }
+      else if (p === 'Mars') { score += Math.round((hard ? 10 : conj ? 8 : soft ? 2 : 5) * rulerReduction); reasons.push(chartRulers.includes(p) ? `Mars is your chart ruler — activation energy, use it with intention.` : `Mars hitting ${act.natalPlanet} — urgency or conflict possible.`); }
+    } else {
+      if (p === 'Saturn')       { score += Math.round((hard ? -12 : conj ? -9 : soft ? -3 : -6) * boost); reasons.push(chartRulers.includes(p) ? `Saturn transits ${act.natalPlanet} — as your ruler, discipline more than punishment.` : `Saturn weighing on ${act.natalPlanet}.`); }
+      else if (p === 'Jupiter') { score += Math.round((hard ? 3 : conj ? 10 : soft ? 8 : 5) * boost); reasons.push(`Jupiter expanding ${act.natalPlanet} by ${act.aspect}.`); }
+      else if (p === 'Rahu')    { score += conj ? 4 : hard ? -4 : 1; reasons.push(`Rahu amplifying ${act.natalPlanet} — desire and intensity increase.`); }
+      else if (p === 'Ketu')    { score += conj ? -7 : hard ? -5 : -2; reasons.push(`Ketu detaching from ${act.natalPlanet} — releases possible.`); }
+      else if (p === 'Mars')    { score += Math.round((hard ? -8 : conj ? -5 : soft ? 3 : 1) * boost); reasons.push(chartRulers.includes(p) ? `Mars activates ${act.natalPlanet} — your ruler, this is drive not just aggression.` : `Mars heating ${act.natalPlanet}.`); }
+      else if (p === 'Sun')     { score += hard ? -2 : conj ? 3 : 1; reasons.push(`Transit Sun spotlighting natal ${act.natalPlanet}.`); }
+      else if (p === 'Venus')   { score += hard ? -1 : conj ? 4 : 2; reasons.push(`Venus softening energy around ${act.natalPlanet}.`); }
+      else if (p === 'Mercury') { score += hard ? -1 : conj ? 3 : 1; reasons.push(`Mercury activating thought around ${act.natalPlanet}.`); }
+      else if (p === 'Moon')    { score += hard ? -1 : 1; reasons.push(`Transit Moon coloring the day around ${act.natalPlanet}.`); }
+    }
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  return { score, reasons };
+}
+
+export function summarizePillarRich(
+  name: 'mind' | 'soul' | 'spirit' | 'pressure',
+  result: PillarResult,
+  natal: Record<string, PlanetPlacement>,
+  activations: Activation[]
+): PillarSummary {
+  const deps = PILLAR_DEPS[name];
+  const chartRulers = getChartRulers(natal);
+  const isPressure = name === 'pressure';
+
+  let stateHeader: string;
+  if (isPressure) {
+    const level = result.score >= 70 ? 'Heavy pressure active' : result.score >= 40 ? 'Moderate pressure building' : 'Pressure is quiet';
+    const topAct = activations.filter(a => ['Saturn','Mars'].includes(a.transitPlanet))[0];
+    const topLine = topAct ? `${topAct.transitPlanet} ${topAct.aspect} natal ${topAct.natalPlanet}` : 'no direct Saturn or Mars activation right now';
+    stateHeader = `${level} — ${topLine} · ${result.score}/100 · ${result.score >= 70 ? 'Real obstacles are in play. Watch your step, your words, and your commitments.' : result.score >= 40 ? 'Some friction is building. Stay aware. Avoid unnecessary confrontations.' : 'The coast is relatively clear. A good time to move and act.'}`;
+  } else {
+    const state = stateFromScore(result.score);
+    const topAct = activations.filter(a => deps.includes(a.natalPlanet))[0];
+    const topLine = topAct ? `${topAct.transitPlanet} ${topAct.aspect} natal ${topAct.natalPlanet}` : 'no dominant transit pressure';
+    stateHeader = `${state.band === 'high' ? 'Open and flowing' : state.band === 'mid' ? 'Under friction' : 'Under significant pressure'} — ${topLine} · ${result.score}/100 · ${state.band === 'high' ? 'This function is accessible and clear right now.' : state.band === 'mid' ? 'This function is compressed. It can still work but it costs you something.' : 'Multiple forces are bearing down here. Go gently and consciously.'}`;
+  }
+
+  const paragraphs: string[] = [];
+  for (const planet of deps) {
+    const p = natal[planet];
+    if (!p) continue;
+    const lines: string[] = [];
+    const nk = p.absolute != null ? getNakshatra(p.absolute) : null;
+    const nkData = nk ? NAKSHATRA_DATA[nk] : null;
+    if (nk && nkData) lines.push(`${planet} occupies ${nk} — ${nkData.name}. Its shakti is ${nkData.shakti}. The shadow side: ${nkData.shadow}.`);
+    const quality = SIGN_QUALITIES[p.sign];
+    if (quality) lines.push(`Through ${p.sign}, this planet is ${quality}.`);
+    if (p.rx) lines.push(`${planet} is retrograde — turns inward before it acts. Works quietly and privately.`);
+    if (p.combust) lines.push(`${planet} is combust — burned by the Sun's proximity. The signal is muffled.`);
+    if (p.cazimi)  lines.push(`${planet} is cazimi — at the exact heart of the Sun. Rare and precise power.`);
+    if (p.house) lines.push(`Operating through the ${ordinal(p.house)} house — ${HOUSE_THEMES[p.house] ?? 'a core life domain'}.`);
+    if (chartRulers.includes(planet)) lines.push(`${planet} rules your chart. Transits to this planet affect you more deeply than most.`);
+    const signRuler = SIGN_RULERS[p.sign];
+    if (signRuler && signRuler !== planet) {
+      const rp = natal[signRuler];
+      if (rp) {
+        const inOwn = SIGN_RULERS[rp.sign] === signRuler;
+        lines.push(`${signRuler} rules ${p.sign} and sits in ${rp.sign}${rp.house ? `, ${ordinal(rp.house)} house` : ''}${inOwn ? ' — in its own sign, operating with full comfort' : ''}.`);
+      }
+    }
+    paragraphs.push(lines.filter(Boolean).join(' '));
+  }
+
+  const relevantActs = isPressure
+    ? activations.filter(a => ['Saturn','Mars'].includes(a.transitPlanet)).slice(0, 3)
+    : activations.filter(a => deps.includes(a.natalPlanet)).slice(0, 3);
+
+  if (relevantActs.length) {
+    paragraphs.push(relevantActs.map(act => buildActivationSentence(act, natal, chartRulers)).join(' '));
+  }
+
+  return { state: stateHeader, body: paragraphs.filter(Boolean).join(' ') };
+}
+
+export interface NatalPattern {
+  type: 'grand-trine' | 'stellium' | 't-square' | 'grand-cross';
+  planets: string[];
+  element?: string;
+  sign?: string;
+  description: string;
+  groundedMeaning: string;
+}
+
+export interface PatternAlert {
+  pattern: NatalPattern;
+  triggeringTransit: string;
+  transitPlanet: string;
+  aspect: string;
+  severity: 'disruption' | 'activation' | 'support';
+  plainWarning: string;
+}
+
+function getAbsoluteDegree(p: PlanetPlacement): number | null {
+  if (p.absolute != null && !isNaN(p.absolute)) return p.absolute;
+  const si = SIGN_ORDER.indexOf(p.sign);
+  if (si < 0) return null;
+  return si * 30 + (p.degree ?? 0);
+}
+
+function angleBetween(a: number, b: number): number {
+  const diff = Math.abs(a - b) % 360;
+  return diff > 180 ? 360 - diff : diff;
+}
+
+function isAspect(a: number, b: number, target: number, orb: number): boolean {
+  return Math.abs(angleBetween(a, b) - target) <= orb;
+}
+
+function detectGrandTrines(natal: Record<string, PlanetPlacement>): NatalPattern[] {
+  const planets = Object.entries(natal).filter(([k]) => k !== 'Asc');
+  const patterns: NatalPattern[] = [];
+  for (let i = 0; i < planets.length - 2; i++) {
+    for (let j = i + 1; j < planets.length - 1; j++) {
+      for (let k = j + 1; k < planets.length; k++) {
+        const [nameA, pA] = planets[i]; const [nameB, pB] = planets[j]; const [nameC, pC] = planets[k];
+        const absA = getAbsoluteDegree(pA); const absB = getAbsoluteDegree(pB); const absC = getAbsoluteDegree(pC);
+        if (absA === null || absB === null || absC === null) continue;
+        if (isAspect(absA, absB, 120, 8) && isAspect(absB, absC, 120, 8) && isAspect(absA, absC, 120, 8)) {
+          const elA = SIGN_ELEMENTS[pA.sign]; const elB = SIGN_ELEMENTS[pB.sign]; const elC = SIGN_ELEMENTS[pC.sign];
+          const element = elA === elB && elB === elC ? elA : 'mixed';
+          patterns.push({ type:'grand-trine', planets:[nameA,nameB,nameC], element, description:`Grand ${element} trine: ${nameA} · ${nameB} · ${nameC}`, groundedMeaning:`You have a closed circuit of ${element} energy between your ${nameA}, ${nameB}, and ${nameC}. These three naturally support each other. When something hits one of these planets hard, all three feel it.` });
+        }
+      }
+    }
+  }
+  return patterns;
+}
+
+function detectStelliums(natal: Record<string, PlanetPlacement>): NatalPattern[] {
+  const bySig: Record<string, string[]> = {};
+  for (const [name, p] of Object.entries(natal)) {
+    if (name === 'Asc') continue;
+    if (!bySig[p.sign]) bySig[p.sign] = [];
+    bySig[p.sign].push(name);
+  }
+  return Object.entries(bySig).filter(([,planets]) => planets.length >= 3).map(([sign, planets]) => ({
+    type: 'stellium' as const, planets, sign, description:`Stellium in ${sign}: ${planets.join(' · ')}`,
+    groundedMeaning:`You have ${planets.length} planets concentrated in ${sign}. Everything those planets represent — ${planets.join(', ')} — operates through the lens of ${sign}. When a transit moves through ${sign}, it doesn't hit one planet. It hits all of them at once.`
+  }));
+}
+
+function detectTSquares(natal: Record<string, PlanetPlacement>): NatalPattern[] {
+  const planets = Object.entries(natal).filter(([k]) => k !== 'Asc');
+  const patterns: NatalPattern[] = [];
+  for (let i = 0; i < planets.length - 2; i++) {
+    for (let j = i + 1; j < planets.length - 1; j++) {
+      const [nameA, pA] = planets[i]; const [nameB, pB] = planets[j];
+      const absA = getAbsoluteDegree(pA); const absB = getAbsoluteDegree(pB);
+      if (absA === null || absB === null || !isAspect(absA, absB, 180, 8)) continue;
+      for (let k = 0; k < planets.length; k++) {
+        if (k === i || k === j) continue;
+        const [nameC, pC] = planets[k];
+        const absC = getAbsoluteDegree(pC);
+        if (absC === null) continue;
+        if (isAspect(absA, absC, 90, 8) && isAspect(absB, absC, 90, 8)) {
+          patterns.push({ type:'t-square', planets:[nameA,nameB,nameC], description:`T-Square: ${nameA} opposition ${nameB}, both square ${nameC}`, groundedMeaning:`${nameA} and ${nameB} are in direct opposition, and both are squaring ${nameC}. ${nameC} is the focal point — it receives pressure from both sides. This produces tremendous drive but friction that seems to come out of nowhere.` });
+        }
+      }
+    }
+  }
+  return patterns;
+}
+
+function detectGrandCross(natal: Record<string, PlanetPlacement>): NatalPattern[] {
+  const planets = Object.entries(natal).filter(([k]) => k !== 'Asc');
+  const patterns: NatalPattern[] = [];
+  for (let i = 0; i < planets.length - 3; i++) {
+    for (let j = i + 1; j < planets.length - 2; j++) {
+      for (let k = j + 1; k < planets.length - 1; k++) {
+        for (let l = k + 1; l < planets.length; l++) {
+          const entries = [planets[i], planets[j], planets[k], planets[l]];
+          const abs = entries.map(([,p]) => getAbsoluteDegree(p));
+          if (abs.some(a => a === null)) continue;
+          const angles = [angleBetween(abs[0]!,abs[1]!),angleBetween(abs[0]!,abs[2]!),angleBetween(abs[0]!,abs[3]!),angleBetween(abs[1]!,abs[2]!),angleBetween(abs[1]!,abs[3]!),angleBetween(abs[2]!,abs[3]!)];
+          if (angles.every(a => Math.abs(a-90)<=8 || Math.abs(a-180)<=8)) {
+            const names = entries.map(([n]) => n);
+            patterns.push({ type:'grand-cross', planets:names, description:`Grand Cross: ${names.join(' · ')}`, groundedMeaning:`Four planets locked in a box of squares and oppositions. Pressure comes from four directions simultaneously. When a transit activates any one of these four points, all four light up.` });
+          }
+        }
+      }
+    }
+  }
+  return patterns;
+}
+
+export function detectNatalPatterns(natal: Record<string, PlanetPlacement>): NatalPattern[] {
+  return [...detectGrandTrines(natal), ...detectStelliums(natal), ...detectTSquares(natal), ...detectGrandCross(natal)];
+}
+
+export function checkPatternAlerts(patterns: NatalPattern[], natal: Record<string, PlanetPlacement>, activations: Activation[]): PatternAlert[] {
+  const alerts: PatternAlert[] = [];
+  for (const pattern of patterns) {
+    const patternPlanetSet = new Set(pattern.planets);
+    for (const act of activations) {
+      if (!patternPlanetSet.has(act.natalPlanet)) continue;
+      const hard = act.aspect === 'square' || act.aspect === 'opposition';
+      const soft = act.aspect === 'trine' || act.aspect === 'sextile';
+      const severity: PatternAlert['severity'] = hard ? 'disruption' : soft ? 'support' : 'activation';
+      let plainWarning = '';
+      if (pattern.type === 'grand-trine') {
+        plainWarning = hard
+          ? `Your grand ${pattern.element ?? ''} trine is being hit. Transit ${act.transitPlanet} is applying hard pressure to your ${act.natalPlanet} — one of the three anchor points. The flow between your ${pattern.planets.join(', ')} is under stress. What normally flows easily may feel blocked.`
+          : `Transit ${act.transitPlanet} is ${soft ? 'supporting' : 'activating'} your grand ${pattern.element ?? ''} trine through your ${act.natalPlanet}. The whole circuit is lit up.`;
+      } else if (pattern.type === 'stellium') {
+        plainWarning = hard
+          ? `Your ${pattern.sign} stellium is under pressure. Transit ${act.transitPlanet} is hitting your ${act.natalPlanet} — because ${pattern.planets.join(', ')} are all in ${pattern.sign}, this touches all of them at once. Concentrated intensity across multiple areas of your life.`
+          : `Transit ${act.transitPlanet} is activating your ${pattern.sign} stellium through your ${act.natalPlanet}. Multiple areas of your life are being touched simultaneously.`;
+      } else if (pattern.type === 't-square') {
+        plainWarning = `Transit ${act.transitPlanet} is hitting your T-Square through your ${act.natalPlanet}. The tension between ${pattern.planets.join(', ')} is activated. Stay conscious of where you are being pulled in multiple directions at once.`;
+      } else if (pattern.type === 'grand-cross') {
+        plainWarning = `Transit ${act.transitPlanet} is touching your Grand Cross through your ${act.natalPlanet}. All four points are feeling this. High-pressure window — avoid major irreversible decisions if possible.`;
+      }
+      if (plainWarning) alerts.push({ pattern, triggeringTransit:`${act.transitPlanet} ${act.aspect} natal ${act.natalPlanet}`, transitPlanet:act.transitPlanet, aspect:act.aspect, severity, plainWarning });
+    }
+  }
+  return alerts;
+}

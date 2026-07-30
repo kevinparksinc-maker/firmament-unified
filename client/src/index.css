@@ -1,0 +1,205 @@
+/* ARCANA STATE — Hermetic Void Design System
+ * Design Movement: Dark Occultism meets Manuscript Illumination
+ * Fonts: Cinzel (ritual labels) + Crimson Pro (prose body)
+ * Palette: Void-black base, amber ember accents, triadic Mind/Soul/Spirit
+ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --void: #030508;
+  --deep: #080d14;
+  --mid: #0d1520;
+  --surface: #111d2e;
+  --rim: #1a2a3f;
+  --ember: #c8923a;
+  --ember-dim: #7a5520;
+  --silver: #b8c8d8;
+  --silver-dim: #5a6a7a;
+  --ice: #8ab4d4;
+  --mind-col: #6ab0e8;
+  --soul-col: #e8a06a;
+  --spirit-col: #a878e8;
+
+  --radius: 0.25rem;
+  --background: oklch(0.04 0.01 240);
+  --foreground: oklch(0.78 0.02 220);
+  --card: oklch(0.06 0.01 240);
+  --card-foreground: oklch(0.78 0.02 220);
+  --popover: oklch(0.06 0.01 240);
+  --popover-foreground: oklch(0.78 0.02 220);
+  --primary: oklch(0.65 0.1 55);
+  --primary-foreground: oklch(0.04 0.01 240);
+  --secondary: oklch(0.1 0.015 240);
+  --secondary-foreground: oklch(0.78 0.02 220);
+  --muted: oklch(0.1 0.015 240);
+  --muted-foreground: oklch(0.45 0.02 220);
+  --accent: oklch(0.1 0.015 240);
+  --accent-foreground: oklch(0.78 0.02 220);
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.18 0.02 240);
+  --input: oklch(0.12 0.015 240);
+  --ring: oklch(0.65 0.1 55);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Crimson Pro", serif;
+    /* Expose arcana CSS vars globally */
+    --void: #030508;
+    --deep: #080d14;
+    --mid: #0d1520;
+    --surface: #111d2e;
+    --rim: #1a2a3f;
+    --ember: #c8923a;
+    --ember-dim: #7a5520;
+    --silver: #b8c8d8;
+    --silver-dim: #5a6a7a;
+    --ice: #8ab4d4;
+    --mind-col: #6ab0e8;
+    --soul-col: #e8a06a;
+    --spirit-col: #a878e8;
+    font-size: 17px;
+    line-height: 1.65;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-color: var(--void);
+    color: var(--silver);
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  a[href],
+  select:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
+@layer components {
+  .container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .flex {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+      max-width: 1280px;
+    }
+  }
+}
+
+/* Firmament background image */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("/src/assets/firmament-bg.png");
+  background-size: cover;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Keyframe animations */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.4);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}

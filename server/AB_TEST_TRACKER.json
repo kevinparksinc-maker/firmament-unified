@@ -1,0 +1,380 @@
+[
+  {
+    "timestamp": "2026-07-20T02:12:19.390Z",
+    "game": "Mets vs Phillies",
+    "matchup": "Phillies vs Mets",
+    "actualResult": "Mets (3-0)",
+    "oldSystem": {
+      "favorite": "Phillies",
+      "prediction": "Mets",
+      "score": -3.5249999999999995,
+      "underdog": "Mets",
+      "score2": 3.3,
+      "margin": 6.824999999999999
+    },
+    "newSystem": {
+      "favorite": "Phillies",
+      "prediction": "Phillies",
+      "score": 7.362162499999999,
+      "underdog": "Mets",
+      "score2": 3.2807168750000004,
+      "margin": 4.081445624999999
+    },
+    "agreement": false,
+    "resultMatch": {
+      "oldCorrect": true,
+      "newCorrect": false
+    }
+  },
+  {
+    "timestamp": "2026-07-20T02:12:19.601Z",
+    "game": "Red Sox vs Yankees",
+    "matchup": "Yankees vs Red Sox",
+    "actualResult": "Red Sox (5-2)",
+    "oldSystem": {
+      "favorite": "Yankees",
+      "prediction": "Red Sox",
+      "score": -8.225,
+      "underdog": "Red Sox",
+      "score2": -2.9250000000000007,
+      "margin": 5.299999999999999
+    },
+    "newSystem": {
+      "favorite": "Yankees",
+      "prediction": "Red Sox",
+      "score": 2.6763125,
+      "underdog": "Red Sox",
+      "score2": 18.2056075,
+      "margin": 15.529295
+    },
+    "agreement": true,
+    "resultMatch": {
+      "oldCorrect": true,
+      "newCorrect": true
+    }
+  },
+  {
+    "timestamp": "2026-07-20T02:12:19.796Z",
+    "game": "Bayern Munich vs AC Milan",
+    "matchup": "Bayern Munich vs AC Milan",
+    "actualResult": "AC Milan (2-1)",
+    "oldSystem": {
+      "favorite": "Bayern Munich",
+      "prediction": "AC Milan",
+      "score": -7.225,
+      "underdog": "AC Milan",
+      "score2": 3.075,
+      "margin": 10.3
+    },
+    "newSystem": {
+      "favorite": "Bayern Munich",
+      "prediction": "Bayern Munich",
+      "score": 27.1211,
+      "underdog": "AC Milan",
+      "score2": -9.472100000000001,
+      "margin": 36.593199999999996
+    },
+    "agreement": false,
+    "resultMatch": {
+      "oldCorrect": true,
+      "newCorrect": false
+    }
+  },
+  {
+    "timestamp": "2026-07-20T02:12:19.860Z",
+    "game": "Brazil vs Argentina",
+    "matchup": "Brazil vs Argentina",
+    "actualResult": "Argentina (1-0)",
+    "oldSystem": {
+      "favorite": "Brazil",
+      "prediction": "Argentina",
+      "score": -6.8125,
+      "underdog": "Argentina",
+      "score2": -4.15,
+      "margin": 2.6624999999999996
+    },
+    "newSystem": {
+      "favorite": "Brazil",
+      "prediction": "Argentina",
+      "score": 1.1154251164904854,
+      "underdog": "Argentina",
+      "score2": 13.221940625000002,
+      "margin": 12.106515508509517
+    },
+    "agreement": true,
+    "resultMatch": {
+      "oldCorrect": true,
+      "newCorrect": true
+    }
+  },
+  {
+    "timestamp": "2026-07-20T03:16:57.945Z",
+    "game": "Mets vs Phillies",
+    "matchup": "Phillies vs Mets",
+    "actualResult": "Mets (3-0)",
+    "oldSystem": {
+      "favorite": "Phillies",
+      "prediction": "Mets",
+      "score": -3.5249999999999995,
+      "underdog": "Mets",
+      "score2": 3.3,
+      "margin": 6.824999999999999
+    },
+    "newSystem": {
+      "favorite": "Phillies",
+      "prediction": "Phillies",
+      "score": 7.653500000000001,
+      "underdog": "Mets",
+      "score2": 3.4336856250000007,
+      "margin": 4.219814375
+    },
+    "agreement": false,
+    "resultMatch": {
+      "oldCorrect": true,
+      "newCorrect": false
+    }
+  },
+  {
+    "timestamp": "2026-07-20T03:16:58.117Z",
+    "game": "Red Sox vs Yankees",
+    "matchup": "Yankees vs Red Sox",
+    "actualResult": "Red Sox (5-2)",
+    "oldSystem": {
+      "favorite": "Yankees",
+      "prediction": "Red Sox",
+      "score": -8.225,
+      "underdog": "Red Sox",
+      "score2": -2.9250000000000007,
+      "margin": 5.299999999999999
+    },
+    "newSystem": {
+      "favorite": "Yankees",
+      "prediction": "Red Sox",
+      "score": 2.8475,
+      "underdog": "Red Sox",
+      "score2": 18.613060625,
+      "margin": 15.765560624999999
+    },
+    "agreement": true,
+    "resultMatch": {
+      "oldCorrect": true,
+      "newCorrect": true
+    }
+  },
+  {
+    "timestamp": "2026-07-20T03:16:58.215Z",
+    "game": "Bayern Munich vs AC Milan",
+    "matchup": "Bayern Munich vs AC Milan",
+    "actualResult": "AC Milan (2-1)",
+    "oldSystem": {
+      "favorite": "Bayern Munich",
+      "prediction": "AC Milan",
+      "score": -7.225,
+      "underdog": "AC Milan",
+      "score2": 3.075,
+      "margin": 10.3
+    },
+    "newSystem": {
+      "favorite": "Bayern Munich",
+      "prediction": "Bayern Munich",
+      "score": 27.849443750000002,
+      "underdog": "AC Milan",
+      "score2": -9.356000000000002,
+      "margin": 37.20544375
+    },
+    "agreement": false,
+    "resultMatch": {
+      "oldCorrect": true,
+      "newCorrect": false
+    }
+  },
+  {
+    "timestamp": "2026-07-20T03:16:58.312Z",
+    "game": "Brazil vs Argentina",
+    "matchup": "Brazil vs Argentina",
+    "actualResult": "Argentina (1-0)",
+    "oldSystem": {
+      "favorite": "Brazil",
+      "prediction": "Argentina",
+      "score": -6.8125,
+      "underdog": "Argentina",
+      "score2": -4.15,
+      "margin": 2.6624999999999996
+    },
+    "newSystem": {
+      "favorite": "Brazil",
+      "prediction": "Argentina",
+      "score": 1.4251050000000003,
+      "underdog": "Argentina",
+      "score2": 13.817375000000002,
+      "margin": 12.392270000000002
+    },
+    "agreement": true,
+    "resultMatch": {
+      "oldCorrect": true,
+      "newCorrect": true
+    }
+  },
+  {
+    "timestamp": "2026-07-20T03:50:03.944Z",
+    "game": "Mets vs Phillies",
+    "matchup": "Phillies vs Mets",
+    "actualResult": "Mets (3-0)",
+    "oldSystem": {
+      "favorite": "Phillies",
+      "prediction": "Mets",
+      "score": -3.5249999999999995,
+      "underdog": "Mets",
+      "score2": 3.3,
+      "margin": 6.824999999999999
+    },
+    "newSystem": {
+      "favorite": "Phillies",
+      "prediction": "Phillies",
+      "score": 7.653500000000001,
+      "underdog": "Mets",
+      "score2": 3.4336856250000007,
+      "margin": 4.219814375
+    },
+    "agreement": false,
+    "resultMatch": {
+      "oldCorrect": true,
+      "newCorrect": false
+    }
+  },
+  {
+    "timestamp": "2026-07-20T03:50:04.197Z",
+    "game": "Red Sox vs Yankees",
+    "matchup": "Yankees vs Red Sox",
+    "actualResult": "Red Sox (5-2)",
+    "oldSystem": {
+      "favorite": "Yankees",
+      "prediction": "Red Sox",
+      "score": -8.225,
+      "underdog": "Red Sox",
+      "score2": -2.9250000000000007,
+      "margin": 5.299999999999999
+    },
+    "newSystem": {
+      "favorite": "Yankees",
+      "prediction": "Red Sox",
+      "score": 2.8475,
+      "underdog": "Red Sox",
+      "score2": 18.613060625,
+      "margin": 15.765560624999999
+    },
+    "agreement": true,
+    "resultMatch": {
+      "oldCorrect": true,
+      "newCorrect": true
+    }
+  },
+  {
+    "timestamp": "2026-07-20T03:50:04.428Z",
+    "game": "Bayern Munich vs AC Milan",
+    "matchup": "Bayern Munich vs AC Milan",
+    "actualResult": "AC Milan (2-1)",
+    "oldSystem": {
+      "favorite": "Bayern Munich",
+      "prediction": "AC Milan",
+      "score": -7.225,
+      "underdog": "AC Milan",
+      "score2": 3.075,
+      "margin": 10.3
+    },
+    "newSystem": {
+      "favorite": "Bayern Munich",
+      "prediction": "Bayern Munich",
+      "score": 27.849443750000002,
+      "underdog": "AC Milan",
+      "score2": -9.356000000000002,
+      "margin": 37.20544375
+    },
+    "agreement": false,
+    "resultMatch": {
+      "oldCorrect": true,
+      "newCorrect": false
+    }
+  },
+  {
+    "timestamp": "2026-07-20T03:50:04.665Z",
+    "game": "Brazil vs Argentina",
+    "matchup": "Brazil vs Argentina",
+    "actualResult": "Argentina (1-0)",
+    "oldSystem": {
+      "favorite": "Brazil",
+      "prediction": "Argentina",
+      "score": -6.8125,
+      "underdog": "Argentina",
+      "score2": -4.15,
+      "margin": 2.6624999999999996
+    },
+    "newSystem": {
+      "favorite": "Brazil",
+      "prediction": "Argentina",
+      "score": 1.4251050000000003,
+      "underdog": "Argentina",
+      "score2": 13.817375000000002,
+      "margin": 12.392270000000002
+    },
+    "agreement": true,
+    "resultMatch": {
+      "oldCorrect": true,
+      "newCorrect": true
+    }
+  },
+  {
+    "timestamp": "2026-07-20T03:50:04.900Z",
+    "game": "Los Angeles Dodgers @ New York Yankees",
+    "matchup": "New York Yankees vs Los Angeles Dodgers",
+    "actualResult": "TBD (TBD)",
+    "oldSystem": {
+      "favorite": "New York Yankees",
+      "prediction": "Los Angeles Dodgers",
+      "score": 5.15,
+      "underdog": "Los Angeles Dodgers",
+      "score2": 10.2625,
+      "margin": 5.112499999999999
+    },
+    "newSystem": {
+      "favorite": "New York Yankees",
+      "prediction": "New York Yankees",
+      "score": 18.700429687500005,
+      "underdog": "Los Angeles Dodgers",
+      "score2": -11,
+      "margin": 29.700429687500005
+    },
+    "agreement": false,
+    "resultMatch": {
+      "oldCorrect": false,
+      "newCorrect": false
+    }
+  },
+  {
+    "timestamp": "2026-07-20T03:50:05.058Z",
+    "game": "Philadelphia Phillies @ Atlanta Braves",
+    "matchup": "Atlanta Braves vs Philadelphia Phillies",
+    "actualResult": "TBD (TBD)",
+    "oldSystem": {
+      "favorite": "Atlanta Braves",
+      "prediction": "Philadelphia Phillies",
+      "score": -3.8875,
+      "underdog": "Philadelphia Phillies",
+      "score2": 9.375,
+      "margin": 13.2625
+    },
+    "newSystem": {
+      "favorite": "Atlanta Braves",
+      "prediction": "Philadelphia Phillies",
+      "score": 11.606250000000001,
+      "underdog": "Philadelphia Phillies",
+      "score2": 18.92817931254888,
+      "margin": 7.32192931254888
+    },
+    "agreement": true,
+    "resultMatch": {
+      "oldCorrect": false,
+      "newCorrect": false
+    }
+  }
+]
