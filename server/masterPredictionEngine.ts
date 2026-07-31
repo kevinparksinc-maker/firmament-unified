@@ -18,10 +18,11 @@ import {
   getFixedStarAmplification,
   getNakshatraLordStrength,
   findFixedStarConjunctions,
+  FIXED_STARS_REFERENCE,
 } from "./nakshatraStarEngine";
 import { getSignNakshatraFriction, PlanetName } from "./planetRelationships";
 import { buildPlanarHouseSystem } from "./planarHouseSystem";
-import { isNight, calculateCanonicalArabicLots, getCanonicalDignityScore } from "./astrologyCore";
+import { isNight, calculateCanonicalArabicLots, getCanonicalDignityScore, assignLotToHouse } from "./astrologyCore";
 import {
   upachayaGrowthLayer,
   viaCombustaLayer,
@@ -103,6 +104,7 @@ export interface ChartData {
   fixedStars: FixedStarConjunction[];
   aspects: AspectData[];
   moon: MoonData;
+  ascendant?: number; // needed to compute which house each fixed star itself occupies
 }
 
 export interface ClusterConfig {
@@ -248,16 +250,19 @@ export function calculateFullPrediction(chart: ChartData, config: ClusterConfig)
     const basePoints = getBasePoints(occupiedHouse);
     const placementBonus = getPlacementBonus(occupiedHouse);
     const dScore = dignityScore(lord.placement);
-    const nScore = nakshatraScore(lord.placement.nakshatra);
 
     // Friction Modifier: Sign Lord ↔ Nakshatra Lord relationship
+    // (This stays here — it's a relationship between sign rulership and
+    // nakshatra rulership, not a nakshatra strength score on its own.)
     const signLord = SIGN_RULERS[lord.placement.sign] as PlanetName || "Sun";
     const nakshatraLord = getNakshatraLord(lord.placement.nakshatra) as PlanetName || "Sun";
     const frictionResult = getSignNakshatraFriction(signLord, nakshatraLord);
     const frictionScore = (frictionResult.multiplier - 1) * 2; // Convert 0.9-1.1x to -0.2 to +0.2
 
-    // Additive scoring: base + placement + all modifiers
-    const controllingGain = basePoints + placementBonus + dScore + nScore + frictionScore;
+    // Additive scoring: base + placement + dignity + friction.
+    // Nakshatra strength itself is now scored as its own standalone
+    // layer below (see LAYER 3.5: NAKSHATRA), not folded in here.
+    const controllingGain = basePoints + placementBonus + dScore + frictionScore;
 
     if (occupiedSide === "A") {
       sideATotal += controllingGain;
@@ -301,7 +306,7 @@ export function calculateFullPrediction(chart: ChartData, config: ClusterConfig)
     const moonSide = whichSide(moonPlacement.house, config);
     const isAngular = [1, 4, 7, 10].includes(moonPlacement.house);
     const moonPoints = isAngular ? 8 : 5; // The Moon is a heavy hitter for momentum
-    
+
     if (moonSide === "A") sideAMoon = moonPoints;
     else if (moonSide === "B") sideBMoon = moonPoints;
   }
@@ -312,10 +317,48 @@ export function calculateFullPrediction(chart: ChartData, config: ClusterConfig)
   });
 
   // ──── LAYER 3: FIXED STAR AMPLIFICATIONS (Separate layer)
+  // Two components, both additive into the same layer total:
+  //
+  // (A) HOUSE OCCUPATION (primary mechanism): every one of the 10 fixed
+  //     stars in FIXED_STARS_REFERENCE is placed into a house by its own
+  //     longitude (equal-house from the ascendant, same convention used
+  //     for Arabic Lots elsewhere in the app), and scores whichever side
+  //     owns that house — regardless of whether any planet is near it.
+  //     This means all 10 stars contribute every single reading, not just
+  //     the rare cases where a lord happens to sit within orb of one.
+  //
+  // (B) TIGHT CONJUNCTION BONUS (secondary, additive): if a house lord
+  //     itself sits within 1° of a star, that's a stronger, more specific
+  //     signal than mere house occupation — so it adds an extra bonus on
+  //     top, it does not replace (A).
   let sideAFixedStars = 0;
   let sideBFixedStars = 0;
 
-  // Track which planets have fixed star conjunctions for explicit scoring
+  const starTierPoints = (group: "royal" | "major" | "minor", nature: "benefic" | "malefic" | "neutral"): number => {
+    if (nature === "neutral") return 0;
+    if (group === "royal") return nature === "benefic" ? 2.0 : -2.5;
+    if (group === "major") return nature === "benefic" ? 1.0 : -1.5;
+    return nature === "benefic" ? 0.5 : -0.75;
+  };
+
+  // (A) House occupation — every star, every reading.
+  if (chart.ascendant !== undefined) {
+    const houseCusps = Array.from({ length: 12 }, (_, i) => (chart.ascendant! + i * 30) % 360);
+
+    for (const star of FIXED_STARS_REFERENCE) {
+      const starHouse = assignLotToHouse(star.longitude, houseCusps);
+      const side = whichSide(starHouse, config);
+      if (side === "neutral") continue;
+
+      const points = starTierPoints(star.group, star.nature);
+      if (side === "A") sideAFixedStars += points;
+      else sideBFixedStars += points;
+    }
+  }
+
+  // (B) Tight conjunction bonus — extra credit when a lord is closely
+  // conjunct a star, on top of whatever that star already contributed
+  // via house occupation above.
   for (const lord of chart.houseLords) {
     const conjunctions = findFixedStarConjunctions(lord.placement.eclipticLon, 1.0);
     if (conjunctions.length === 0) continue;
@@ -325,13 +368,7 @@ export function calculateFullPrediction(chart: ChartData, config: ClusterConfig)
 
     let starBonus = 0;
     for (const star of conjunctions) {
-      if (star.group === "royal") {
-        starBonus += star.nature === "benefic" ? 2.0 : -2.5;
-      } else if (star.group === "major") {
-        starBonus += star.nature === "benefic" ? 1.0 : -1.5;
-      } else {
-        starBonus += star.nature === "benefic" ? 0.5 : -0.75;
-      }
+      starBonus += starTierPoints(star.group, star.nature);
     }
 
     if (side === "A") sideAFixedStars += starBonus;
@@ -341,6 +378,31 @@ export function calculateFullPrediction(chart: ChartData, config: ClusterConfig)
     layer: "Fixed Stars (Royal & Major)",
     sideAPoints: sideAFixedStars,
     sideBPoints: sideBFixedStars,
+  });
+
+  // ──── LAYER 3.5: NAKSHATRA (Lunar Mansion Strength)
+  // Previously folded silently into Layer 1's controllingGain. Now its own
+  // standalone layer so its contribution — and the traits driving it
+  // (initiative, pressure response, consistency, finishing ability) — is
+  // visible and narratable on its own, the same way Fixed Stars was
+  // promoted out of Territorial Control.
+  let sideANakshatra = 0;
+  let sideBNakshatra = 0;
+
+  for (const lord of chart.houseLords) {
+    const occupiedHouse = lord.placement.house;
+    const side = whichSide(occupiedHouse, config);
+    if (side === "neutral") continue;
+
+    const nScore = nakshatraScore(lord.placement.nakshatra);
+
+    if (side === "A") sideANakshatra += nScore;
+    else sideBNakshatra += nScore;
+  }
+  breakdown.push({
+    layer: "Nakshatra (Lunar Mansion Strength)",
+    sideAPoints: sideANakshatra,
+    sideBPoints: sideBNakshatra,
   });
 
   // ──── LAYER 4: ARABIC LOTS
@@ -431,8 +493,8 @@ export function calculateFullPrediction(chart: ChartData, config: ClusterConfig)
     nodes.sideBPoints;
 
   // ──── TOTAL & CONFIDENCE
-  const sideABreakdown = sideATotal + sideAFixedStars + sideALots + (aspectTotal / 2) + (moonAdjustment / 2) + clusterLayersA + sideAMoon;
-  const sideBBreakdown = sideBTotal + sideBFixedStars + sideBLots + (-aspectTotal / 2) + (moonAdjustment / 2) + clusterLayersB + sideBMoon;
+  const sideABreakdown = sideATotal + sideAFixedStars + sideANakshatra + sideALots + (aspectTotal / 2) + (moonAdjustment / 2) + clusterLayersA + sideAMoon;
+  const sideBBreakdown = sideBTotal + sideBFixedStars + sideBNakshatra + sideBLots + (-aspectTotal / 2) + (moonAdjustment / 2) + clusterLayersB + sideBMoon;
 
   const TOO_CLOSE_THRESHOLD = 2;
   const margin = sideABreakdown - sideBBreakdown;
