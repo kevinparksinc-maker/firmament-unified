@@ -23,6 +23,7 @@ import {
 import { getSignNakshatraFriction, PlanetName } from "./planetRelationships";
 import { buildPlanarHouseSystem } from "./planarHouseSystem";
 import { isNight, calculateCanonicalArabicLots, getCanonicalDignityScore, assignLotToHouse } from "./astrologyCore";
+import { getSubLord } from "./kp/subLords";
 import {
   upachayaGrowthLayer,
   viaCombustaLayer,
@@ -259,10 +260,16 @@ export function calculateFullPrediction(chart: ChartData, config: ClusterConfig)
     const frictionResult = getSignNakshatraFriction(signLord, nakshatraLord);
     const frictionScore = (frictionResult.multiplier - 1) * 2; // Convert 0.9-1.1x to -0.2 to +0.2
 
-    // Additive scoring: base + placement + dignity + friction.
+    // KP Sub-Lord Modifier: Krishnamurti Paddhati sub-lord signification
+    // Each ecliptic degree has a sub-lord ruler (270 divisions: 27 nakshatras × 9 lords)
+    // Sub-lord adds fine-grained nuance to lord strength (±0.5 pts)
+    const subLordData = getSubLord(lord.placement.eclipticLon);
+    const kpScore = subLordData.lord === nakshatraLord ? 0.25 : -0.15; // Harmonic vs friction
+
+    // Additive scoring: base + placement + dignity + friction + KP.
     // Nakshatra strength itself is now scored as its own standalone
     // layer below (see LAYER 3.5: NAKSHATRA), not folded in here.
-    const controllingGain = basePoints + placementBonus + dScore + frictionScore;
+    const controllingGain = basePoints + placementBonus + dScore + frictionScore + kpScore;
 
     if (occupiedSide === "A") {
       sideATotal += controllingGain;
