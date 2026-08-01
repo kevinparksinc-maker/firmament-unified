@@ -260,21 +260,34 @@ export function calculateFullPrediction(chart: ChartData, config: ClusterConfig)
     const frictionResult = getSignNakshatraFriction(signLord, nakshatraLord);
     const frictionScore = (frictionResult.multiplier - 1) * 2; // Convert 0.9-1.1x to -0.2 to +0.2
 
-    // KP Sub-Lord Modifier: Krishnamurti Paddhati sub-lord signification
-    // Each ecliptic degree has a sub-lord ruler (270 divisions: 27 nakshatras × 9 lords)
-    // Sub-lord weighted by house type (angular/succedent/cadent) — same scale as basePoints
+    // KP Sub-Lord & Star-Lord Modifiers: Krishnamurti Paddhati three-tier signification
+    // Layer 2: Sub-lord ruler (planet ruling the exact ecliptic degree in 270 divisions)
     const subLordData = getSubLord(lord.placement.eclipticLon);
     const houseType = getHouseType(occupiedHouse);
-    const kpWeights = {
-      angular: { harmonic: 1.5, friction: -1.5 },
-      succedent: { harmonic: 1.0, friction: -1.0 },
-      cadent: { harmonic: 0.5, friction: -0.5 },
-    };
-    const kpScore = subLordData.lord === nakshatraLord
-      ? kpWeights[houseType].harmonic
-      : kpWeights[houseType].friction;
 
-    // Additive scoring: base + placement + dignity + friction + KP.
+    // Layer 3: Star-lord (planet ruling the nakshatra of the sub-lord planet)
+    // Find the sub-lord planet's position in the chart to get its nakshatra
+    const subLordPlanetName = subLordData.lord;
+    const subLordPlacement = chart.planetsInHouses.find(p => p.name === subLordPlanetName);
+    const starLord = subLordPlacement ? getNakshatraLord(subLordPlacement.nakshatra) : nakshatraLord;
+
+    // KP harmonic alignment: sub-lord and star-lord both match nakshatra lord = strongest alignment
+    const kpAlignmentLevels = {
+      triple: { angular: 2.0, succedent: 1.5, cadent: 1.0 }, // Sub-lord, star-lord, AND nak-lord all match
+      double: { angular: 1.5, succedent: 1.0, cadent: 0.5 }, // Sub-lord OR star-lord matches nak-lord
+      single: { angular: -1.5, succedent: -1.0, cadent: -0.5 }, // Neither sub-lord nor star-lord match
+    };
+
+    let kpScore = 0;
+    if (subLordData.lord === nakshatraLord && starLord === nakshatraLord) {
+      kpScore = kpAlignmentLevels.triple[houseType]; // All three aligned
+    } else if (subLordData.lord === nakshatraLord || starLord === nakshatraLord) {
+      kpScore = kpAlignmentLevels.double[houseType]; // Sub-lord OR star-lord aligned
+    } else {
+      kpScore = kpAlignmentLevels.single[houseType]; // Neither aligned
+    }
+
+    // Additive scoring: base + placement + dignity + friction + full KP chain.
     // Nakshatra strength itself is now scored as its own standalone
     // layer below (see LAYER 3.5: NAKSHATRA), not folded in here.
     const controllingGain = basePoints + placementBonus + dScore + frictionScore + kpScore;
