@@ -20,6 +20,8 @@ import { NAKSHATRAS, type NakshatraProfile } from "./nakshatraData";
 import { detectPlanetaryWar, type PlanetaryWar } from "./patternEngine";
 import { SIDE_A_HOUSES, SIDE_B_HOUSES, ANGULAR_HOUSES } from "./houseScoringConstants";
 import { isNight, calculateCanonicalArabicLots, getCanonicalDignityScore } from "./astrologyCore";
+import { getSubLord } from "./kp/subLords";
+import { getNakshatraLord } from "./nakshatraStarEngine";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +36,7 @@ export interface HouseLordEvaluation {
   dignityScore: number;
   arabicLotsScore: number;
   planetaryWarScore: number;
+  kpScore: number;
   totalScore: number;
 }
 
@@ -63,6 +66,14 @@ function getSide(house: number): "A" | "B" | null {
   if (SIDE_A_HOUSES.includes(house as any)) return "A";
   if (SIDE_B_HOUSES.includes(house as any)) return "B";
   return null;
+}
+
+// ─── HELPER: Determine house type (angular/succedent/cadent) ─────────────────
+
+function getHouseType(house: number): "angular" | "succedent" | "cadent" {
+  if ([1, 4, 7, 10].includes(house)) return "angular";
+  if ([2, 5, 8, 11].includes(house)) return "succedent";
+  return "cadent";
 }
 
 // ─── HELPER: Convert nakshatra profile to additive modifier ─────────────────
@@ -255,10 +266,43 @@ export function calculateTerritorialControl(
       planetaryWarScore -= 1;
     }
 
+    // ─── KP SUB-LORD & STAR-LORD SCORING (Krishnamurti Paddhati) ──────────────
+
+    let kpScore = 0;
+    try {
+      const houseType = getHouseType(lordPlacement.house ?? 1);
+      const subLordData = getSubLord(lordPlacement.eclipticLon ?? 0);
+      const nakshatraLord = getNakshatraLord(nakshatra.name);
+
+      // Find sub-lord planet's position to get its nakshatra (for star-lord)
+      const subLordPlacement = planets[subLordData.lord];
+      const starLord = subLordPlacement
+        ? getNakshatraLord(getNakshatraAt(subLordPlacement.eclipticLon ?? 0).nakshatra.name)
+        : nakshatraLord;
+
+      // KP alignment levels by house type
+      const kpAlignmentLevels = {
+        triple: { angular: 2.0, succedent: 1.5, cadent: 1.0 },
+        double: { angular: 1.5, succedent: 1.0, cadent: 0.5 },
+        single: { angular: -1.5, succedent: -1.0, cadent: -0.5 },
+      };
+
+      if (subLordData.lord === nakshatraLord && starLord === nakshatraLord) {
+        kpScore = kpAlignmentLevels.triple[houseType];
+      } else if (subLordData.lord === nakshatraLord || starLord === nakshatraLord) {
+        kpScore = kpAlignmentLevels.double[houseType];
+      } else {
+        kpScore = kpAlignmentLevels.single[houseType];
+      }
+    } catch (e) {
+      // KP calculation failed, default to 0
+      kpScore = 0;
+    }
+
     // ─── TOTAL SCORE ──────────────────────────────────────────────
 
     const totalScore =
-      baseScore + nakshatraModifier + dignityScore + arabicLotsScore + planetaryWarScore;
+      baseScore + nakshatraModifier + dignityScore + arabicLotsScore + planetaryWarScore + kpScore;
 
     const evaluation: HouseLordEvaluation = {
       houseNumber: house,
@@ -271,6 +315,7 @@ export function calculateTerritorialControl(
       dignityScore,
       arabicLotsScore,
       planetaryWarScore,
+      kpScore,
       totalScore,
     };
 
@@ -352,7 +397,7 @@ export function formatTerritorialReport(
   } else {
     for (const e of result.sideAEvals) {
       const lordHouseStr = e.lordHouse ? `H${e.lordHouse}` : "—";
-      const breakdown = `[base:${e.baseScore > 0 ? "+" : ""}${e.baseScore.toFixed(0)} nak:${e.nakshatraModifier > 0 ? "+" : ""}${e.nakshatraModifier.toFixed(2)} dign:${e.dignityScore > 0 ? "+" : ""}${e.dignityScore} lots:${e.arabicLotsScore > 0 ? "+" : ""}${e.arabicLotsScore} war:${e.planetaryWarScore > 0 ? "+" : ""}${e.planetaryWarScore}]`;
+      const breakdown = `[base:${e.baseScore > 0 ? "+" : ""}${e.baseScore.toFixed(0)} nak:${e.nakshatraModifier > 0 ? "+" : ""}${e.nakshatraModifier.toFixed(2)} dign:${e.dignityScore > 0 ? "+" : ""}${e.dignityScore} kp:${e.kpScore > 0 ? "+" : ""}${e.kpScore.toFixed(2)} lots:${e.arabicLotsScore > 0 ? "+" : ""}${e.arabicLotsScore} war:${e.planetaryWarScore > 0 ? "+" : ""}${e.planetaryWarScore}]`;
       lines.push(
         `  H${e.houseNumber} ${e.lord.padEnd(9)} ${e.lordSign.padEnd(9)} (${lordHouseStr}) ${breakdown}`
       );
@@ -368,7 +413,7 @@ export function formatTerritorialReport(
   } else {
     for (const e of result.sideBEvals) {
       const lordHouseStr = e.lordHouse ? `H${e.lordHouse}` : "—";
-      const breakdown = `[base:${e.baseScore > 0 ? "+" : ""}${e.baseScore.toFixed(0)} nak:${e.nakshatraModifier > 0 ? "+" : ""}${e.nakshatraModifier.toFixed(2)} dign:${e.dignityScore > 0 ? "+" : ""}${e.dignityScore} lots:${e.arabicLotsScore > 0 ? "+" : ""}${e.arabicLotsScore} war:${e.planetaryWarScore > 0 ? "+" : ""}${e.planetaryWarScore}]`;
+      const breakdown = `[base:${e.baseScore > 0 ? "+" : ""}${e.baseScore.toFixed(0)} nak:${e.nakshatraModifier > 0 ? "+" : ""}${e.nakshatraModifier.toFixed(2)} dign:${e.dignityScore > 0 ? "+" : ""}${e.dignityScore} kp:${e.kpScore > 0 ? "+" : ""}${e.kpScore.toFixed(2)} lots:${e.arabicLotsScore > 0 ? "+" : ""}${e.arabicLotsScore} war:${e.planetaryWarScore > 0 ? "+" : ""}${e.planetaryWarScore}]`;
       lines.push(
         `  H${e.houseNumber} ${e.lord.padEnd(9)} ${e.lordSign.padEnd(9)} (${lordHouseStr}) ${breakdown}`
       );
