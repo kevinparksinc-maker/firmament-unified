@@ -268,7 +268,7 @@ export function calculateFullPrediction(chart: ChartData, config: ClusterConfig)
     // Layer 3: Star-lord (planet ruling the nakshatra of the sub-lord planet)
     // Find the sub-lord planet's position in the chart to get its nakshatra
     const subLordPlanetName = subLordData.lord;
-    const subLordPlacement = chart.planetsInHouses.find(p => p.name === subLordPlanetName);
+    const subLordPlacement = chart.planetsInHouses?.find(p => p.planet === subLordPlanetName);
     const starLord = subLordPlacement ? getNakshatraLord(subLordPlacement.nakshatra) : nakshatraLord;
 
     // KP harmonic alignment: sub-lord and star-lord both match nakshatra lord = strongest alignment
@@ -329,7 +329,7 @@ export function calculateFullPrediction(chart: ChartData, config: ClusterConfig)
   // ──── LAYER 2: LUNAR FLOW (Moon's Territorial Presence)
   let sideAMoon = 0;
   let sideBMoon = 0;
-  const moonPlacement = chart.planetsInHouses.find(p => p.planet === "Moon");
+  const moonPlacement = chart.planetsInHouses?.find(p => p.planet === "Moon");
   if (moonPlacement) {
     const moonSide = whichSide(moonPlacement.house, config);
     const isAngular = [1, 4, 7, 10].includes(moonPlacement.house);
