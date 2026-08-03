@@ -9,6 +9,7 @@ import {
   SIGN_ORDER,
   stateFromScore,
 } from "./astroEngine";
+import { getSubLord } from "./kp/subLords";
 
 const PILLAR_DEPS: Record<string, string[]> = {
   mind: ["Mercury", "Moon"],
@@ -591,6 +592,10 @@ export function summarizePillarRich(
       lines.push(
         `${planet} occupies ${nk} — ${nkData.name}. Its shakti is ${nkData.shakti}. The shadow side: ${nkData.shadow}.`
       );
+    if (p.eclipticLon != null) {
+      const subLord = getSubLord(p.eclipticLon);
+      lines.push(`Sub-lord: ${subLord.lord} (KP system). This adds micro-precision to ${planet}'s expression.`);
+    }
     const quality = SIGN_QUALITIES[p.sign];
     if (quality) lines.push(`Through ${p.sign}, this planet is ${quality}.`);
     if (p.rx)
