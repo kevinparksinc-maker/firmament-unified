@@ -123,6 +123,14 @@ export function buildChartData(chart: Chart, ascendant?: number): ChartData {
   const planetLookup: Record<string, SportsHoraryPlacement> = {};
   const cusps = ascendant !== undefined ? buildEqualHouseCusps(ascendant) : undefined;
 
+  // Compute absolute house cusp longitudes once, reuse for lots and downstream layers (KP, etc.)
+  const houseCuspLons: number[] | undefined = cusps
+    ? Array.from({ length: 12 }, (_, i) => {
+        const c = cusps[i + 1];
+        return SIGN_ORDER.indexOf(c.sign) * 30 + c.degree;
+      })
+    : undefined;
+
   for (const [planetName, placement] of Object.entries(chart)) {
     const eclipticLon = placement.eclipticLon ?? (SIGN_ORDER.indexOf(placement.sign) * 30 + placement.degree);
     const house = placement.house ?? (cusps ? getHouseFromLon(eclipticLon, cusps) : 1);
@@ -209,6 +217,7 @@ export function buildChartData(chart: Chart, ascendant?: number): ChartData {
       isVoidOfCourse: false,
       nakshatra: chart.Moon ? getNakshatraAt(SIGN_ORDER.indexOf(chart.Moon.sign) * 30 + chart.Moon.degree).nakshatra.name : "Ashwini",
     },
+    houseCusps: houseCuspLons,
   };
 }
 

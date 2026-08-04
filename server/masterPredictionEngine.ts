@@ -106,6 +106,7 @@ export interface ChartData {
   aspects: AspectData[];
   moon: MoonData;
   ascendant?: number; // needed to compute which house each fixed star itself occupies
+  houseCusps?: number[]; // absolute ecliptic longitude of each house cusp, index 0 = house 1
 }
 
 export interface ClusterConfig {
