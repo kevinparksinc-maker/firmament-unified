@@ -6,7 +6,13 @@
  * are wanderers moving against this eternal backdrop. Polaris sits at the
  * celestial north pole — the still center that everything else rotates around.
  *
- * Positions given in sidereal degrees (0 = 0° Aries).
+ * Positions given in fixed firmament degrees (0 = permanent Aries 0°).
+ * The four Royal Stars are PERMANENT ANCHORS on this fixed grid — not their
+ * current real-sky longitude, which drifts over centuries due to precession.
+ * This engine has no precession model, so those anchors are hardcoded at
+ * their traditional 15°-of-sign positions and never recalculated:
+ *   Aldebaran 45° (15° Taurus) · Regulus 135° (15° Leo) ·
+ *   Antares 225° (15° Scorpio) · Fomalhaut 315° (15° Aquarius)
  * Sources: traditional Vedic/Hellenistic star lists, Bernadette Brady, Vivian Robson.
  */
 
@@ -42,9 +48,9 @@ export const FIXED_STARS: FixedStar[] = [
   {
     name: "Aldebaran",
     shortName: "Aldebaran",
-    sidDegree: 69.47, // ~9° 47' Gemini
-    sign: "Gemini",
-    degree: 9.47,
+    sidDegree: 45.0, // Fixed anchor: 15° Taurus, permanent
+    sign: "Taurus",
+    degree: 15.0,
     nature: "Mars",
     magnitude: "1st",
     meaning:
@@ -54,9 +60,9 @@ export const FIXED_STARS: FixedStar[] = [
   {
     name: "Regulus",
     shortName: "Regulus",
-    sidDegree: 149.83, // ~29° 50' Leo
+    sidDegree: 135.0, // Fixed anchor: 15° Leo, permanent
     sign: "Leo",
-    degree: 29.83,
+    degree: 15.0,
     nature: "Mars/Jupiter",
     magnitude: "1st",
     meaning:
@@ -66,7 +72,7 @@ export const FIXED_STARS: FixedStar[] = [
   {
     name: "Antares",
     shortName: "Antares",
-    sidDegree: 249.73, // ~9° 44' Sagittarius (sidereal) — shown as 15° Scorpio in tropical
+    sidDegree: 225.0, // Fixed anchor: 15° Scorpio, permanent
     sign: "Scorpio",
     degree: 15.0,
     nature: "Mars/Jupiter",
@@ -78,9 +84,9 @@ export const FIXED_STARS: FixedStar[] = [
   {
     name: "Fomalhaut",
     shortName: "Fomalhaut",
-    sidDegree: 333.87, // ~3° 52' Pisces
-    sign: "Pisces",
-    degree: 3.87,
+    sidDegree: 315.0, // Fixed anchor: 15° Aquarius, permanent
+    sign: "Aquarius",
+    degree: 15.0,
     nature: "Venus/Mercury",
     magnitude: "1st",
     meaning:

@@ -254,3 +254,119 @@ export function getCanonicalDignityScore(planetName: string, sign: string): { st
     return { status: "Neutral", score: 0 };
   }
 }
+
+// ----------------------------------------------------------------------------
+// 4. KP Stellar Core (Star-Lord and Sub-Lord)
+// ----------------------------------------------------------------------------
+
+export interface KPStellarDetails {
+  starLord: string;
+  subLord: string;
+  nakshatraName: string;
+  degreeInNakshatra: number;
+}
+
+const NAKSHATRA_NAMES = [
+  "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
+  "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni",
+  "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha",
+  "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha",
+  "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"
+];
+
+const VIMSHOTTARI_LORDS = [
+  "Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"
+];
+
+const VIMSHOTTARI_YEARS: Record<string, number> = {
+  Ketu: 7, Venus: 20, Sun: 6, Moon: 10, Mars: 7, Rahu: 18, Jupiter: 16, Saturn: 19, Mercury: 17
+};
+
+/**
+ * Maps a planet's local surface Azimuth directly onto the 12 Fixed Vertical Houses.
+ * Anchored to East (90°). Flowing counter-clockwise.
+ * 
+ * Logic from the Technical Brief:
+ * - House 1 / Aries: Starts at East (90°) and goes CCW (towards North).
+ * - House 4 / Cancer: Aligns with North (0°/360°).
+ * - House 7 / Libra: Aligns with West (270°).
+ * - House 10 / Capricorn: Aligns with South (180°).
+ * 
+ * Standard Azimuth (SA): N=0, E=90, S=180, W=270.
+ * CCW Flow: 90 -> 60 -> 30 -> 0 -> 330 -> 300 -> 270 -> 240 -> 210 -> 180 -> 150 -> 120 -> 90.
+ *
+ * NOTE: this function returns a HOUSE only. Do not use its `sign`/`degree`
+ * output to reassign a planet's zodiac sign — sign comes exclusively from
+ * ecliptic longitude on the fixed firmament grid and must never be derived
+ * from azimuth (see masterPredictionEngine.ts fixedDomeMode handling).
+ */
+export function calculateTopocentricHouse(standardAzimuth: number): { house: number; degree: number; sign: string } {
+  const normAz = ((standardAzimuth % 360) + 360) % 360;
+  
+  // The grid is CCW from East (90).
+  // We calculate how many degrees CCW we are from 90.
+  // Degrees CCW = (90 - normAz) % 360
+  let degCCW = (90 - normAz) % 360;
+  if (degCCW < 0) degCCW += 360;
+
+  const houseNumber = Math.floor(degCCW / 30) + 1;
+  const cuspDegree = degCCW % 30;
+
+  const ZODIAC_SIGNS = [
+    "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
+  ];
+  const sign = ZODIAC_SIGNS[houseNumber - 1];
+
+  return { house: houseNumber, degree: cuspDegree, sign };
+}
+
+/**
+ * Calculates the KP Star-Lord and Sub-Lord for a given ecliptic longitude.
+ * Implements the precise 249 Sub-Lord logic from the Fixed Dome brief.
+ * @param longitude The ecliptic longitude (0-360).
+ * @returns KPStellarDetails containing star lord, sub lord, and nakshatra info.
+ */
+export function getKPStellarDetails(longitude: number): KPStellarDetails {
+  const normalizedLon = normalizeLon(longitude);
+  const nakshatraSpan = 360 / 27; // 13.333333°
+  
+  // 1. Nakshatra calculation
+  const nakIdx = Math.floor(normalizedLon / nakshatraSpan);
+  const nakshatraName = NAKSHATRA_NAMES[nakIdx % 27];
+  
+  // 2. Star-Lord calculation
+  // Mapping of Nakshatras to their Vedic ruling planets
+  const NAKSHATRA_LORDS = [
+    "Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury",
+    "Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury",
+    "Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"
+  ];
+  const starLord = NAKSHATRA_LORDS[nakIdx % 27];
+  
+  // 3. Sub-Lord calculation using precise unequal boundaries
+  const remainingDeg = normalizedLon % nakshatraSpan;
+  const startPlanetIdx = VIMSHOTTARI_LORDS.indexOf(starLord);
+  
+  let currentBoundary = 0.0;
+  let subLord = starLord;
+  
+  for (let i = 0; i < 9; i++) {
+    const currentPlanet = VIMSHOTTARI_LORDS[(startPlanetIdx + i) % 9];
+    const years = VIMSHOTTARI_YEARS[currentPlanet];
+    const spanWidth = (years / 120) * nakshatraSpan;
+    currentBoundary += spanWidth;
+    
+    if (remainingDeg <= currentBoundary) {
+      subLord = currentPlanet;
+      break;
+    }
+  }
+  
+  return {
+    starLord,
+    subLord,
+    nakshatraName,
+    degreeInNakshatra: remainingDeg
+  };
+}

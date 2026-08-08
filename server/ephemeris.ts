@@ -14,11 +14,14 @@
  * by adding an ayanamsa later; that would reintroduce a precession model
  * this engine is deliberately built without.
  *
- * HOUSE SYSTEM: Equal house. House 1 begins exactly at the Ascendant's
- * degree; each subsequent house is a fixed 30° step from there. Signs are
- * NOT used as house boundaries — a single house can span the end of one
- * sign and the start of the next (an "intercepted" sign). This applies
- * uniformly to natal, transit, and horary charts.
+ * HOUSE SYSTEM: Whole Sign. The raw geometric Ascendant degree is calculated
+ * as before (no ayanamsa), but house boundaries are NOT set at that exact
+ * degree — they are set at the 0° boundary of the Ascendant's sign. That
+ * entire sign becomes House 1, the next sign House 2, and so on around the
+ * wheel. No sign is ever split across two houses ("intercepted") and no
+ * house ever spans two signs. House labels are fixed at the moment of the
+ * chart (birth, transit-moment, or horary-moment) and never re-spun after
+ * that. This applies uniformly to natal, transit, and horary charts.
  */
 
 import { createRequire } from "module";
@@ -197,11 +200,15 @@ function calcHouseCusps(
     Math.PI;
   ascEcliptic = ((ascEcliptic % 360) + 360) % 360;
 
-  // Equal-house cusps: house 1 starts exactly at the Ascendant's degree;
-  // each subsequent cusp is a fixed 30° step from there (not sign-aligned).
+  // Whole Sign cusps: house 1 = the entire fixed sign containing the
+  // Ascendant degree. Each cusp sits at that sign's 0° boundary (a multiple
+  // of 30°), not at the raw Ascendant degree — Whole Sign uses sign
+  // boundaries, never the exact rising degree, as house cusps.
+  const ascSignIdx = Math.floor((((ascEcliptic % 360) + 360) % 360) / 30);
   const cusps: number[] = [];
   for (let i = 0; i < 12; i++) {
-    cusps.push((ascEcliptic + i * 30) % 360);
+    const signIdx = (ascSignIdx + i) % 12;
+    cusps.push(signIdx * 30);
   }
 
   return {
@@ -212,20 +219,20 @@ function calcHouseCusps(
 }
 
 /**
- * Build the 12 equal-house cusps starting from the Ascendant's exact degree.
- * signName reflects the sign AT THE CUSP (start of the house) — the house
- * itself may extend into the next sign before the following cusp, since
- * each house is a fixed 30° step rather than a whole sign.
+ * Build the 12 Whole Sign houses. House 1 is the entire sign containing the
+ * Ascendant degree; House 2 is the next sign around the fixed wheel; and so
+ * on. Every house is exactly one 30° sign — no interceptions, no splitting.
  */
 export function generateWholeSignHouses(ascendantEcliptic: number): WholeSignHouse[] {
+  const ascSignIdx = Math.floor((((ascendantEcliptic % 360) + 360) % 360) / 30);
   const houses: WholeSignHouse[] = [];
   for (let houseNum = 1; houseNum <= 12; houseNum++) {
-    const startDegree = (ascendantEcliptic + (houseNum - 1) * 30) % 360;
-    const endDegree = (ascendantEcliptic + houseNum * 30) % 360;
-    const cuspSignIdx = Math.floor(startDegree / 30);
+    const signIdx = (ascSignIdx + houseNum - 1) % 12;
+    const startDegree = signIdx * 30;
+    const endDegree = (startDegree + 30) % 360;
     houses.push({
       houseNumber: houseNum,
-      signName: ZODIAC_SIGNS[cuspSignIdx],
+      signName: ZODIAC_SIGNS[signIdx],
       startDegree,
       endDegree,
     });
@@ -233,16 +240,18 @@ export function generateWholeSignHouses(ascendantEcliptic: number): WholeSignHou
   return houses;
 }
 
-/** Equal-house assignment: house 1 spans [Asc, Asc+30°), each next house is another 30° step. */
+/** Whole Sign assignment: a planet's house is however many signs its sign sits ahead of the Ascendant's sign — never based on its exact degree within the sign. */
 function getHouseNumber(planetLon: number, ascendantEcliptic: number): number {
-  const diff = (((planetLon - ascendantEcliptic) % 360) + 360) % 360;
-  return Math.floor(diff / 30) + 1;
+  const planetSignIdx = Math.floor((((planetLon % 360) + 360) % 360) / 30);
+  const ascSignIdx = Math.floor((((ascendantEcliptic % 360) + 360) % 360) / 30);
+  const diff = ((planetSignIdx - ascSignIdx) % 12 + 12) % 12;
+  return diff + 1;
 }
 
 // ─── Main Calculation ─────────────────────────────────────────────────────────
 // Used identically for natal charts, transit charts, and horary charts —
 // horary just passes the moment/location of the question instead of a birth
-// moment/location. Equal house is applied uniformly across all three, so no
+// moment/location. Whole Sign is applied uniformly across all three, so no
 // special-casing is needed here.
 
 export async function calculateChart(

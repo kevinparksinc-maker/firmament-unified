@@ -18,7 +18,7 @@ export interface FixedStarActive {
 const FIXED_STARS_CORE = [
   {
     name: "Regulus",
-    tropicalLon: 29 + 43 / 60, // Leo 29°43'
+    tropicalLon: 135, // Fixed anchor: 15° Leo, permanent
     orb: 1.0,
     meaning: "Kingship, honor, victory, championship potential",
     nature: "benefic",
@@ -32,21 +32,21 @@ const FIXED_STARS_CORE = [
   },
   {
     name: "Aldebaran",
-    tropicalLon: 30 + 9 + 47 / 60, // Taurus 9°47'
+    tropicalLon: 45, // Fixed anchor: 15° Taurus, permanent
     orb: 0.8,
     meaning: "Courage, military honor, aggression, fighting spirit",
     nature: "benefic",
   },
   {
     name: "Antares",
-    tropicalLon: 120 + 30 / 60 + 26 + 26 / 60, // Scorpio 26°26'
+    tropicalLon: 225, // Fixed anchor: 15° Scorpio, permanent
     orb: 1.0,
     meaning: "Intense battles, conquest, high-risk/high-reward, comeback energy",
     nature: "malefic",
   },
   {
     name: "Fomalhaut",
-    tropicalLon: 180 + 30 / 60 + 3 + 14 / 60, // Pisces 3°14'
+    tropicalLon: 315, // Fixed anchor: 15° Aquarius, permanent
     orb: 0.8,
     meaning: "Inspiration, vision, momentum, unexpected success",
     nature: "benefic",
