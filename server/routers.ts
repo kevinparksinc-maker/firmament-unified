@@ -16,6 +16,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { fromZonedTime } from "date-fns-tz";
 import tzLookup from "tz-lookup";
 import { horaryLayer } from "./horary";
+import { askZeteticAtlas } from "./zeteticAtlasDialogue";
 import { sportsHoraryLayer } from "./sportsHoraryReading";
 import { sportsHoraryV2Layer } from "./sportsHoraryV2Reading";
 
@@ -649,6 +650,59 @@ Rules: Answer directly. Use specific placements. No preamble. Keep it conversati
     }),
 });
 
+// ─── Zetetic Atlas Dialogue Router ────────────────────────────────────────────
+// Kept separate from natal, horary, and sports procedures because its active
+// direct-angle/Equal-House calculation conventions are intentionally isolated.
+
+const atlasPointSchema = z.object({
+  name: z.string().min(1).max(80),
+  kind: z.enum(["planet", "node", "angle"]),
+  longitude: z.number().min(0).lt(360),
+  sign: z.string().min(1).max(24),
+  degree: z.number().min(0).lt(30),
+  house: z.number().int().min(1).max(12),
+  rightAscension: z.number().min(0).lt(24),
+  declination: z.number().min(-90).max(90),
+  azimuth: z.number().min(0).lt(360),
+  altitude: z.number().min(-90).max(90),
+});
+
+const zeteticAtlasRouter = router({
+  ask: publicProcedure
+    .input(
+      z.object({
+        question: z.string().min(1).max(2000),
+        chart: z.object({
+          input: z.object({
+            birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+            birthTime: z.string().regex(/^\d{2}:\d{2}$/),
+            timezone: z.string().min(1).max(80),
+            location: z.string().max(160),
+            latitude: z.number().min(-90).max(90),
+            longitude: z.number().min(-180).max(180),
+          }),
+          utcIso: z.string().min(10).max(80),
+          utcDegrees: z.number().min(0).lt(360),
+          ascendant: z.number().min(0).lt(360),
+          descendant: z.number().min(0).lt(360),
+          midheaven: z.number().min(0).lt(360),
+          imumCoeli: z.number().min(0).lt(360),
+          houses: z.array(z.object({
+            number: z.number().int().min(1).max(12),
+            startLabel: z.string().max(80),
+            endLabel: z.string().max(80),
+          })).length(12),
+          points: z.array(atlasPointSchema).min(10).max(20),
+        }),
+        history: z.array(z.object({
+          role: z.enum(["user", "assistant"]),
+          content: z.string().min(1).max(6000),
+        })).max(10).optional(),
+      })
+    )
+    .mutation(({ input }) => askZeteticAtlas(input)),
+});
+
 // ─── Sports Horary Router ─────────────────────────────────────────────────────
 // Deterministic sports-prediction engine (server/sportsHorary.ts) drives the
 // call; the LLM narrates the engine's verdict/score/flags.
@@ -811,6 +865,7 @@ export const appRouter = router({
   synthesize: synthesizeRouter,
   natalPlacement: natalPlacementRouter,
   horary: horaryRouter,
+  zeteticAtlas: zeteticAtlasRouter,
   sportsHorary: sportsHoraryRouter,
 });
 

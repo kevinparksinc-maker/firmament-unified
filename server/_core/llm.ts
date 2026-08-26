@@ -2,34 +2,12 @@ import { ENV } from "./env";
 
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
 export type TextContent = { type: "text"; text: string };
-export type ImageContent = {
-  type: "image_url";
-  image_url: { url: string; detail?: "auto" | "low" | "high" };
-};
-export type FileContent = {
-  type: "file_url";
-  file_url: { url: string; mime_type?: string };
-};
+export type ImageContent = { type: "image_url"; image_url: { url: string; detail?: "auto" | "low" | "high" } };
+export type FileContent = { type: "file_url"; file_url: { url: string; mime_type?: string } };
 export type MessageContent = string | TextContent | ImageContent | FileContent;
-export type Message = {
-  role: Role;
-  content: MessageContent | MessageContent[];
-  name?: string;
-  tool_call_id?: string;
-};
-export type Tool = {
-  type: "function";
-  function: {
-    name: string;
-    description?: string;
-    parameters?: Record<string, unknown>;
-  };
-};
-export type ToolCall = {
-  id: string;
-  type: "function";
-  function: { name: string; arguments: string };
-};
+export type Message = { role: Role; content: MessageContent | MessageContent[]; name?: string; tool_call_id?: string };
+export type Tool = { type: "function"; function: { name: string; description?: string; parameters?: Record<string, unknown> } };
+export type ToolCall = { id: string; type: "function"; function: { name: string; arguments: string } };
 export type InvokeParams = {
   messages: Message[];
   tools?: Tool[];
@@ -41,130 +19,70 @@ export type InvokeParams = {
   output_schema?: unknown;
   responseFormat?: unknown;
   response_format?: unknown;
+  model?: string;
+  thinking?: Record<string, unknown>;
+  reasoning?: Record<string, unknown>;
 };
 export type InvokeResult = {
   id: string;
   created: number;
   model: string;
-  choices: Array<{
-    index: number;
-    message: {
-      role: Role;
-      content: string | Array<TextContent | ImageContent | FileContent>;
-      tool_calls?: ToolCall[];
-    };
-    finish_reason: string | null;
-  }>;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
+  choices: Array<{ index: number; message: { role: Role; content: string | Array<TextContent | ImageContent | FileContent>; tool_calls?: ToolCall[] }; finish_reason: string | null }>;
+  usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
 };
+export type ModelInfo = { id: string; object: string; created: number; owned_by: string };
+export type ModelsResponse = { object: string; data: ModelInfo[] };
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey)
-    throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
+  if (!ENV.forgeApiKey) throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
 };
-const ensureArray = (c: MessageContent | MessageContent[]): MessageContent[] =>
-  Array.isArray(c) ? c : [c];
-const toText = (part: MessageContent): string => {
-  if (typeof part === "string") return part;
-  if (part.type === "text") return part.text;
-  return "";
+const apiBase = () => (ENV.forgeApiUrl || "https://forge.manus.im").replace(/\/$/, "");
+const asParts = (content: MessageContent | MessageContent[]) => Array.isArray(content) ? content : [content];
+const normalizeContent = (content: MessageContent | MessageContent[]) => {
+  const parts = asParts(content);
+  if (parts.length === 1 && typeof parts[0] === "string") return parts[0];
+  return parts.map(part => typeof part === "string" ? { type: "text", text: part } : part);
 };
+const normalizeMessage = ({ role, content, name, tool_call_id }: Message) => ({
+  role,
+  content: normalizeContent(content),
+  ...(name ? { name } : {}),
+  ...(tool_call_id ? { tool_call_id } : {}),
+});
 
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   assertApiKey();
-  const { messages } = params;
-
-  const systemParts = messages
-    .filter(m => m.role === "system")
-    .map(m => ensureArray(m.content).map(toText).join(""))
-    .join("\n\n");
-
-  const anthropicMessages = messages
-    .filter(m => m.role !== "system")
-    .map(m => {
-      const parts = ensureArray(m.content);
-      const content = parts
-        .map(part => {
-          if (typeof part === "string") return { type: "text", text: part };
-          if (part.type === "text") return { type: "text", text: part.text };
-          if (part.type === "image_url") {
-            const url = part.image_url.url;
-            if (url.startsWith("data:")) {
-              const [meta, data] = url.split(",");
-              const mediaType = meta.split(":")[1].split(";")[0];
-              return {
-                type: "image",
-                source: { type: "base64", media_type: mediaType, data },
-              };
-            }
-            return { type: "image", source: { type: "url", url } };
-          }
-          return { type: "text", text: "" };
-        })
-        .filter((p: any) => p.type !== "text" || p.text.length > 0);
-      const finalContent =
-        content.length === 1 && content[0].type === "text"
-          ? (content[0] as any).text
-          : content;
-      return { role: m.role as "user" | "assistant", content: finalContent };
-    });
-
   const payload: Record<string, unknown> = {
-    model: "claude-sonnet-4-6",
-    max_tokens: 8192,
-    messages: anthropicMessages,
+    model: params.model ?? "claude-sonnet-4-6",
+    messages: params.messages.map(normalizeMessage),
   };
-  if (systemParts) payload.system = systemParts;
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": ENV.forgeApiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      "Anthropic API error: " +
-        response.status +
-        " " +
-        response.statusText +
-        " - " +
-        errorText
-    );
+  const maxTokens = params.max_tokens ?? params.maxTokens;
+  if (typeof maxTokens === "number") payload.max_tokens = maxTokens;
+  if (params.tools?.length) payload.tools = params.tools;
+  if (params.toolChoice ?? params.tool_choice) payload.tool_choice = params.toolChoice ?? params.tool_choice;
+  if (params.thinking) payload.thinking = params.thinking;
+  if (params.reasoning) payload.reasoning = params.reasoning;
+  if (params.responseFormat ?? params.response_format) payload.response_format = params.responseFormat ?? params.response_format;
+  if (params.outputSchema ?? params.output_schema) {
+    const schema = params.outputSchema ?? params.output_schema;
+    payload.response_format = { type: "json_schema", json_schema: schema };
   }
 
-  const raw = (await response.json()) as any;
-  const textContent = raw.content
-    .filter((b: any) => b.type === "text")
-    .map((b: any) => b.text ?? "")
-    .join("");
+  const response = await fetch(`${apiBase()}/v1/chat/completions`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${ENV.forgeApiKey}` },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`LLM invoke failed: ${response.status} ${response.statusText} – ${detail}`);
+  }
+  return (await response.json()) as InvokeResult;
+}
 
-  return {
-    id: raw.id,
-    created: Math.floor(Date.now() / 1000),
-    model: raw.model,
-    choices: [
-      {
-        index: 0,
-        message: { role: "assistant", content: textContent },
-        finish_reason: raw.stop_reason ?? null,
-      },
-    ],
-    usage: raw.usage
-      ? {
-          prompt_tokens: raw.usage.input_tokens,
-          completion_tokens: raw.usage.output_tokens,
-          total_tokens: raw.usage.input_tokens + raw.usage.output_tokens,
-        }
-      : undefined,
-  };
+export async function listLLMModels(): Promise<ModelsResponse> {
+  assertApiKey();
+  const response = await fetch(`${apiBase()}/v1/models`, { headers: { authorization: `Bearer ${ENV.forgeApiKey}` } });
+  if (!response.ok) throw new Error(`List LLM models failed: ${response.status} ${response.statusText}`);
+  return (await response.json()) as ModelsResponse;
 }

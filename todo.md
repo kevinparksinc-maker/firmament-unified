@@ -60,3 +60,7 @@
 - [x] Build an auditable Zetetic Atlas user interface and navigation entry within Firmament.
 - [x] Add deterministic Zetetic and arbitrary-date coordinate tests, then validate the new route alongside the existing sports route.
 - [ ] Address the existing repository-wide TypeScript backlog that prevents `pnpm check` from passing independently of Zetetic Atlas changes.
+- [x] Define a server-side Zetetic Atlas dialogue contract that carries live chart provenance, direct-angle conventions, points, houses, and map coordinates.
+- [x] Add a secure Atlas dialogue mutation using Firmament’s existing server-side LLM infrastructure.
+- [x] Connect the Atlas route’s active chart and conversation history to the dialogue interface without exposing credentials.
+- [x] Add context-unit tests and validate a real reflective Atlas dialogue response through the live server path.
