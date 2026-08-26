@@ -678,6 +678,18 @@ const atlasPointSchema = z.object({
     isRoyal: z.boolean(),
     isPolar: z.boolean(),
   })).max(8),
+  dignity: z.object({
+    status: z.enum(["domicile", "detriment", "exaltation", "fall", "neutral", "not-classically-assigned"]),
+    label: z.string().min(1).max(80),
+    scope: z.enum(["traditional seven planets", "no classical assignment"]),
+  }),
+  combustion: z.object({
+    applicable: z.boolean(),
+    isCombust: z.boolean(),
+    angularDistance: z.number().min(0).max(180).nullable(),
+    threshold: z.literal(15),
+    rule: z.string().min(1).max(160),
+  }),
 });
 
 const zeteticAtlasRouter = router({

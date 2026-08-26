@@ -88,3 +88,7 @@
 - [x] Repair the Atlas Astronomy Engine module interop so the identical live calculation path runs in browser builds and Node-based audits.
 - [x] Independently cross-check the Dallas live Mars longitude against JPL Horizons using a declared geocentric ecliptic convention.
 - [x] Add explicit live-ephemeris provenance to the Atlas chart contract and lock its verified Dallas Mars longitude and Equal-House assignment in regression coverage.
+- [x] Define a transparent traditional-dignity contract for Atlas planets, covering domicile, detriment, exaltation, fall, and neutral status without changing live longitudes or houses.
+- [x] Add strict 15.0° Sun–planet combustion detection with raw angular distance and threshold recorded for every applicable Atlas planet.
+- [x] Display dignities and combustion evidence in Atlas Audit Mode, the selected-point panel, and Atlas Scholar context.
+- [x] Add deterministic dignity and combustion regressions, including Dallas Saturn’s live 12.55° combust result, then validate the Atlas route.

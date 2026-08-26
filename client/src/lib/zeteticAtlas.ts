@@ -1,6 +1,7 @@
 import * as AstronomyModule from "astronomy-engine";
 import { FIXED_STARS } from "./fixedStars";
 import { getNakshatraAt } from "./nakshatra";
+import { getAtlasDignity, getStrictCombustion, type AtlasCombustion, type AtlasDignity } from "./atlasDignities";
 
 const astronomyDefault = Reflect.get(AstronomyModule, "default") as typeof AstronomyModule | undefined;
 const Astronomy = astronomyDefault ?? AstronomyModule;
@@ -37,6 +38,8 @@ export type ZeteticPoint = {
   azimuth: number;
   altitude: number;
   nakshatra: { name: string; lord: string; pada: number };
+  dignity: AtlasDignity;
+  combustion: AtlasCombustion;
   fixedStars: Array<{
     name: string;
     orb: number;
@@ -179,6 +182,7 @@ function makePoint(
   altitude: number,
   ascendant: number,
   color: string,
+  sunLongitude: number,
 ): ZeteticPoint {
   const zodiac = zodiacFor(longitude);
   const nakshatra = getNakshatraAt(longitude);
@@ -192,6 +196,10 @@ function makePoint(
     signSymbol: zodiac.symbol,
     degree: zodiac.degree,
     house: equalHouseForLongitude(longitude, ascendant),
+    dignity: getAtlasDignity(name, zodiac.name),
+    combustion: kind === "planet"
+      ? getStrictCombustion(name, longitude, sunLongitude)
+      : { applicable: false, isCombust: false, angularDistance: null, threshold: 15, rule: "Strict raw tropical longitude: shortest Sun–planet distance ≤ 15.0°" },
     rightAscension,
     declination,
     azimuth,
@@ -214,12 +222,17 @@ export function calculateZeteticChart(input: ZeteticInput): ZeteticChart {
   const descendant = normalize(ascendant + 180);
   const imumCoeli = normalize(midheaven + 180);
 
-  const planets = PLANETS.map(([name, short, body, color]) => {
+  const livePlanetCoordinates = PLANETS.map(([name, short, body, color]) => {
     const longitude = normalize(Astronomy.Ecliptic(Astronomy.GeoVector(body, time, false)).elon);
     const equator = Astronomy.Equator(body, time, observer, true, true);
     const horizon = Astronomy.Horizon(time, observer, equator.ra, equator.dec, "normal");
-    return makePoint(name.toLowerCase(), name, short, "planet", longitude, equator.ra, equator.dec, horizon.azimuth, horizon.altitude, ascendant, color);
+    return { name, short, color, longitude, equator, horizon };
   });
+  const sunLongitude = livePlanetCoordinates.find(point => point.name === "Sun")?.longitude;
+  if (sunLongitude === undefined) throw new Error("Live Sun longitude is required to evaluate combustion.");
+  const planets = livePlanetCoordinates.map(({ name, short, color, longitude, equator, horizon }) =>
+    makePoint(name.toLowerCase(), name, short, "planet", longitude, equator.ra, equator.dec, horizon.azimuth, horizon.altitude, ascendant, color, sunLongitude)
+  );
 
   const markers = [
     ["north-node", "North Node", "☊", "node", meanNorthNode(time), "#72c5b4"],
@@ -233,7 +246,7 @@ export function calculateZeteticChart(input: ZeteticInput): ZeteticChart {
   const points = markers.map(([key, name, short, kind, longitude, color]) => {
     const equatorial = eclipticToEquatorial(longitude);
     const horizon = Astronomy.Horizon(time, observer, equatorial.rightAscension, equatorial.declination, "normal");
-    return makePoint(key, name, short, kind, longitude, equatorial.rightAscension, equatorial.declination, horizon.azimuth, horizon.altitude, ascendant, color);
+    return makePoint(key, name, short, kind, longitude, equatorial.rightAscension, equatorial.declination, horizon.azimuth, horizon.altitude, ascendant, color, sunLongitude);
   });
 
   const houses = Array.from({ length: 12 }, (_, index) => {

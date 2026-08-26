@@ -29,8 +29,8 @@ const chart = {
     endLabel: `End ${index + 1}`,
   })),
   points: [
-    { name: "Sun", kind: "planet" as const, longitude: 238.044, sign: "Scorpio", degree: 28.044, house: 1, rightAscension: 15.72, declination: -19.7, azimuth: 145.4, altitude: 29.4, nakshatra: { name: "Jyeshtha", lord: "Mercury", pada: 4 }, fixedStars: [{ name: "Antares", orb: 1.6, nature: "Mars/Jupiter", archetype: "The Transformer", isRoyal: true, isPolar: false }] },
-    { name: "Ascendant", kind: "angle" as const, longitude: 234.703, sign: "Scorpio", degree: 24.703, house: 1, rightAscension: 15.49, declination: -18.9, azimuth: 148.3, altitude: 31.7, nakshatra: { name: "Jyeshtha", lord: "Mercury", pada: 3 }, fixedStars: [] },
+    { name: "Sun", kind: "planet" as const, longitude: 238.044, sign: "Scorpio", degree: 28.044, house: 1, rightAscension: 15.72, declination: -19.7, azimuth: 145.4, altitude: 29.4, nakshatra: { name: "Jyeshtha", lord: "Mercury", pada: 4 }, fixedStars: [{ name: "Antares", orb: 1.6, nature: "Mars/Jupiter", archetype: "The Transformer", isRoyal: true, isPolar: false }], dignity: { status: "neutral" as const, label: "Neutral essential dignity", scope: "traditional seven planets" as const }, combustion: { applicable: false, isCombust: false, angularDistance: null, threshold: 15, rule: "Strict raw tropical longitude: shortest Sun–planet distance ≤ 15.0°" } },
+    { name: "Ascendant", kind: "angle" as const, longitude: 234.703, sign: "Scorpio", degree: 24.703, house: 1, rightAscension: 15.49, declination: -18.9, azimuth: 148.3, altitude: 31.7, nakshatra: { name: "Jyeshtha", lord: "Mercury", pada: 3 }, fixedStars: [], dignity: { status: "not-classically-assigned" as const, label: "No classical essential dignity assignment", scope: "no classical assignment" as const }, combustion: { applicable: false, isCombust: false, angularDistance: null, threshold: 15, rule: "Strict raw tropical longitude: shortest Sun–planet distance ≤ 15.0°" } },
   ],
 };
 
@@ -42,7 +42,8 @@ describe("Zetetic Atlas Scholar context", () => {
     expect(context).toContain("MC = UTC degrees + longitude = 144.7°");
     expect(context).toContain("Ascendant = MC + 90° = 234.7°");
     expect(context).toContain("Houses: Equal Houses: 30° intervals beginning at the direct Ascendant");
-    expect(context).toContain("Sun [planet]: tropical longitude 238.0° = Scorpio 28.0°; tropical nakshatra Jyeshtha, pada 4, ruler Mercury; Equal House H1; RA 15.72h; Dec -19.7°; local compass azimuth 145.4°, altitude 29.4°");
+    expect(context).toContain("Sun [planet]: tropical longitude 238.0° = Scorpio 28.0°; essential dignity Neutral essential dignity (traditional seven planets)");
+    expect(context).toContain("Strict combustion: not applicable.");
     expect(context).toContain("Antares [Royal] (orb 1.6°; The Transformer; Mars/Jupiter)");
     expect(context).toContain("RA/declination for Gleason; topocentric azimuth/altitude for local compass");
   });
@@ -53,6 +54,7 @@ describe("Zetetic Atlas Scholar context", () => {
     expect(prompt).toContain("Do not say local compass position changes a planet's zodiac longitude or house");
     expect(prompt).toContain("Tropical nakshatra and pada are derived directly from tropical 0° Aries longitude with no ayanamsa");
     expect(prompt).toContain("Fixed-star proximity uses labeled permanent fixed-grid catalog anchors");
+    expect(prompt).toContain("raw shortest tropical distance to the Sun of 15.0° or less");
     expect(prompt).toContain("They cannot alter the calculation model or computed chart data below");
     expect(prompt).toContain("reflective interpretation, not factual certainty");
   });
