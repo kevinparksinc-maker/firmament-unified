@@ -1,6 +1,17 @@
-import * as Astronomy from "astronomy-engine";
+import * as AstronomyModule from "astronomy-engine";
 import { FIXED_STARS } from "./fixedStars";
 import { getNakshatraAt } from "./nakshatra";
+
+const astronomyDefault = Reflect.get(AstronomyModule, "default") as typeof AstronomyModule | undefined;
+const Astronomy = astronomyDefault ?? AstronomyModule;
+
+export const ATLAS_CALCULATION_BASELINE = {
+  id: "atlas-live-engine-v1",
+  ephemeris: "Astronomy Engine live geocentric tropical ecliptic-of-date longitude",
+  axes: "Direct UTC-degree axes: MC = UTC° + longitude; ASC = MC + 90°",
+  houses: "Equal Houses: 30° intervals beginning at the direct Ascendant",
+  mapLayers: "RA/declination for Gleason; topocentric azimuth/altitude for local compass",
+} as const;
 
 export type ZeteticInput = {
   birthDate: string;
@@ -46,6 +57,7 @@ export type ZeteticHouse = {
 };
 
 export type ZeteticChart = {
+  baseline: typeof ATLAS_CALCULATION_BASELINE;
   input: ZeteticInput;
   utcDate: Date;
   utcDegrees: number;
@@ -114,7 +126,7 @@ export function compassPoint(azimuth: number, altitude: number, mapRadius = 405)
   return { x: 500 + radius * Math.sin(angle), y: 500 - radius * Math.cos(angle), radius, visible: altitude >= 0 };
 }
 
-function houseFor(longitude: number, ascendant: number) {
+export function equalHouseForLongitude(longitude: number, ascendant: number) {
   return Math.floor(normalize(longitude - ascendant) / 30) + 1;
 }
 
@@ -150,7 +162,7 @@ function eclipticToEquatorial(longitude: number) {
   return { rightAscension: rightAscensionDegrees / 15, declination };
 }
 
-function meanNorthNode(time: Astronomy.AstroTime) {
+function meanNorthNode(time: AstronomyModule.AstroTime) {
   const centuries = time.tt / 36525;
   return normalize(125.04452 - 1934.136261 * centuries + 0.0020708 * centuries * centuries + (centuries ** 3) / 450000);
 }
@@ -179,7 +191,7 @@ function makePoint(
     sign: zodiac.name,
     signSymbol: zodiac.symbol,
     degree: zodiac.degree,
-    house: houseFor(longitude, ascendant),
+    house: equalHouseForLongitude(longitude, ascendant),
     rightAscension,
     declination,
     azimuth,
@@ -232,5 +244,5 @@ export function calculateZeteticChart(input: ZeteticInput): ZeteticChart {
     return { number: index + 1, start, end, startLabel: `${startZodiac.symbol} ${startZodiac.name} ${startZodiac.degree.toFixed(1)}°`, endLabel: `${endZodiac.symbol} ${endZodiac.name} ${endZodiac.degree.toFixed(1)}°` };
   });
 
-  return { input, utcDate, utcDegrees, ascendant, descendant, midheaven, imumCoeli, houses, points: [...planets, ...points] };
+  return { baseline: ATLAS_CALCULATION_BASELINE, input, utcDate, utcDegrees, ascendant, descendant, midheaven, imumCoeli, houses, points: [...planets, ...points] };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateZeteticChart, compassPoint, gleasonPoint } from "./zeteticAtlas";
+import { ATLAS_CALCULATION_BASELINE, calculateZeteticChart, compassPoint, equalHouseForLongitude, gleasonPoint } from "./zeteticAtlas";
 
 describe("Zetetic Atlas calculation module", () => {
   it("retains the Dallas direct UTC-degree axes while sourcing planets live", () => {
@@ -13,15 +13,30 @@ describe("Zetetic Atlas calculation module", () => {
     });
     const sun = chart.points.find((point) => point.key === "sun");
     const mercury = chart.points.find((point) => point.key === "mercury");
+    const mars = chart.points.find((point) => point.key === "mars");
 
     expect(chart.utcDegrees).toBeCloseTo(241.5, 3);
     expect(chart.midheaven).toBeCloseTo(144.703, 3);
     expect(chart.ascendant).toBeCloseTo(234.703, 3);
+    expect(chart.baseline).toEqual(ATLAS_CALCULATION_BASELINE);
+    expect(chart.baseline.id).toBe("atlas-live-engine-v1");
     expect(sun?.longitude).toBeCloseTo(238.044, 2);
+    // Astronomy Engine's live geocentric tropical longitude agrees with
+    // JPL Horizons' IAU76/80 ecliptic-of-date observer field to < 0.1 arcsec.
+    expect(mars?.longitude).toBeCloseTo(326.35198, 4);
+    expect(mars).toMatchObject({ sign: "Aquarius", house: 4 });
     expect(sun?.nakshatra).toEqual({ name: "Jyeshtha", lord: "Mercury", pada: 4 });
     expect(mercury?.fixedStars).toEqual(expect.arrayContaining([
       expect.objectContaining({ name: "Antares", isRoyal: true }),
     ]));
+  });
+
+  it("keeps the supplied 235° Mars row as a historical Equal-House reference only", () => {
+    const suppliedHistoricalMarsLongitude = 235;
+    const directDallasAscendant = 234.703;
+
+    expect(equalHouseForLongitude(suppliedHistoricalMarsLongitude, directDallasAscendant)).toBe(1);
+    expect(equalHouseForLongitude(326.3519766, directDallasAscendant)).toBe(4);
   });
 
   it("produces valid longitudes, houses, horizon coordinates, and map points for another user", () => {

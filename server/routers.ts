@@ -686,6 +686,13 @@ const zeteticAtlasRouter = router({
       z.object({
         question: z.string().min(1).max(2000),
         chart: z.object({
+          baseline: z.object({
+            id: z.literal("atlas-live-engine-v1"),
+            ephemeris: z.string().min(1).max(160),
+            axes: z.string().min(1).max(160),
+            houses: z.string().min(1).max(160),
+            mapLayers: z.string().min(1).max(160),
+          }),
           input: z.object({
             birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
             birthTime: z.string().regex(/^\d{2}:\d{2}$/),

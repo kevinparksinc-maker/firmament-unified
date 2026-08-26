@@ -29,6 +29,13 @@ export type AtlasDialogueHouse = {
 };
 
 export type AtlasDialogueChart = {
+  baseline: {
+    id: "atlas-live-engine-v1";
+    ephemeris: string;
+    axes: string;
+    houses: string;
+    mapLayers: string;
+  };
   input: {
     birthDate: string;
     birthTime: string;
@@ -72,14 +79,16 @@ export function buildZeteticAtlasContext(chart: AtlasDialogueChart) {
   return `ATLAS PROVENANCE — COMPUTED, NOT USER-SUPPLIED INTERPRETATION
 Input: ${chart.input.birthDate} ${chart.input.birthTime} (${chart.input.timezone}); ${chart.input.location}; latitude ${fixed(chart.input.latitude)}, longitude ${fixed(chart.input.longitude)}.
 UTC instant: ${chart.utcIso}.
-Live planetary source: Astronomy Engine geocentric tropical ecliptic longitude.
+Baseline ID: ${chart.baseline.id}.
+Live planetary source: ${chart.baseline.ephemeris}.
 
 ACTIVE ZETETIC CHART FRAME
 UTC degrees: ${fixed(chart.utcDegrees)}.
+Axis convention: ${chart.baseline.axes}.
 MC = UTC degrees + longitude = ${fixed(chart.midheaven)}.
 Ascendant = MC + 90° = ${fixed(chart.ascendant)}.
 Descendant = ${fixed(chart.descendant)}. IC = ${fixed(chart.imumCoeli)}.
-Houses: Equal Houses, each 30°, starting at the direct Ascendant degree.
+Houses: ${chart.baseline.houses}.
 
 HOUSE RANGES
 ${houses}
@@ -89,8 +98,8 @@ ${points}
 
 COORDINATE SEPARATION
 - Tropical longitude determines the zodiac, tropical nakshatra convention where applicable, and Equal House placement.
-- RA/declination places a point on the independent north-pole Gleason map.
-- Topocentric azimuth/altitude places a point in the separate local compass-sky view; it does not replace zodiac longitude or house placement.`;
+- ${chart.baseline.mapLayers}.
+- RA/declination and topocentric azimuth/altitude do not replace zodiac longitude or house placement.`;
 }
 
 export function buildZeteticAtlasSystemPrompt(chart: AtlasDialogueChart) {

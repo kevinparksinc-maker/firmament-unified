@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { buildZeteticAtlasContext, buildZeteticAtlasSystemPrompt } from "./zeteticAtlasDialogue";
 
 const chart = {
+  baseline: {
+    id: "atlas-live-engine-v1" as const,
+    ephemeris: "Astronomy Engine live geocentric tropical ecliptic-of-date longitude",
+    axes: "Direct UTC-degree axes: MC = UTC° + longitude; ASC = MC + 90°",
+    houses: "Equal Houses: 30° intervals beginning at the direct Ascendant",
+    mapLayers: "RA/declination for Gleason; topocentric azimuth/altitude for local compass",
+  },
   input: {
     birthDate: "1986-11-20",
     birthTime: "10:06",
@@ -30,14 +37,14 @@ const chart = {
 describe("Zetetic Atlas Scholar context", () => {
   it("includes the live source, direct angles, Equal Houses, and both coordinate layers", () => {
     const context = buildZeteticAtlasContext(chart);
-    expect(context).toContain("Astronomy Engine geocentric tropical ecliptic longitude");
+    expect(context).toContain("Baseline ID: atlas-live-engine-v1");
+    expect(context).toContain("Astronomy Engine live geocentric tropical ecliptic-of-date longitude");
     expect(context).toContain("MC = UTC degrees + longitude = 144.7°");
     expect(context).toContain("Ascendant = MC + 90° = 234.7°");
-    expect(context).toContain("Houses: Equal Houses");
+    expect(context).toContain("Houses: Equal Houses: 30° intervals beginning at the direct Ascendant");
     expect(context).toContain("Sun [planet]: tropical longitude 238.0° = Scorpio 28.0°; tropical nakshatra Jyeshtha, pada 4, ruler Mercury; Equal House H1; RA 15.72h; Dec -19.7°; local compass azimuth 145.4°, altitude 29.4°");
     expect(context).toContain("Antares [Royal] (orb 1.6°; The Transformer; Mars/Jupiter)");
-    expect(context).toContain("RA/declination places a point on the independent north-pole Gleason map");
-    expect(context).toContain("Topocentric azimuth/altitude places a point in the separate local compass-sky view");
+    expect(context).toContain("RA/declination for Gleason; topocentric azimuth/altitude for local compass");
   });
 
   it("locks the scholar to the stated model rather than allowing it to overwrite computation conventions", () => {

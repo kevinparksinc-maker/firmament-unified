@@ -76,8 +76,15 @@
 - [x] Resolve the 180-degree natal Ascendant and Equal-House regression identified by the legacy natal engine validation profile.
 - [x] Trace and correct the legacy natal Ascendant orientation formula without changing the separate Zetetic direct-angle calculation.
 - [x] Rerun natal validation plus focused sports and Atlas regressions after the axis repair.
+- [x] Retrieve and present the complete standard and 180-degree inverse layer scorecards for the Phillies-at-Mariners software test.
+- [x] Run the original pre-KP sports model on the Phillies-at-Mariners event chart and compare its call with the current modes and reported score.
+- [x] Audit and reconcile the Dallas Mars house discrepancy across the legacy natal engine, the isolated Zetetic Atlas engine, and the supplied direct-angle reference.
+- [x] Establish a single audited calculation baseline across UTC conversion, live ephemeris longitude, legacy natal axes, direct Zetetic axes, and house assignment before expanding prediction features.
 - [ ] Resolve the legacy repository-wide TypeScript errors that prevent `pnpm check` from passing.
 - [x] Reuse or adapt Firmament’s nakshatra and fixed-star data for the isolated live Zetetic Atlas model.
 - [x] Add tropical nakshatra, pada, and fixed-star proximity enrichments to each Atlas planetary placement without changing its tropical longitude or house.
 - [x] Surface enriched fixed-star and nakshatra context in Atlas audit/inspector and Atlas Scholar prompts.
 - [x] Add deterministic enrichment tests and validate the resulting Atlas Scholar context.
+- [x] Repair the Atlas Astronomy Engine module interop so the identical live calculation path runs in browser builds and Node-based audits.
+- [x] Independently cross-check the Dallas live Mars longitude against JPL Horizons using a declared geocentric ecliptic convention.
+- [x] Add explicit live-ephemeris provenance to the Atlas chart contract and lock its verified Dallas Mars longitude and Equal-House assignment in regression coverage.
