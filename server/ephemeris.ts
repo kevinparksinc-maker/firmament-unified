@@ -198,7 +198,10 @@ function calcHouseCusps(
     ) *
       180) /
     Math.PI;
-  ascEcliptic = ((ascEcliptic % 360) + 360) % 360;
+  // The closed-form intersection above resolves the opposite horizon point in
+  // this app's zodiac orientation. Rotate it once to select the rising-side
+  // direction used by the locked natal reference and downstream house model.
+  ascEcliptic = ((ascEcliptic + 180) % 360 + 360) % 360;
 
   // Whole Sign cusps: house 1 = the entire fixed sign containing the
   // Ascendant degree. Each cusp sits at that sign's 0° boundary (a multiple

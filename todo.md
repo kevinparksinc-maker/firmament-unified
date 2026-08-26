@@ -71,6 +71,12 @@
 - [x] Define an auditable 180-degree inverse-map transformation for sports chart comparison without replacing the standard chart calculation.
 - [x] Add a side-tab comparison experience that exposes standard and inverse-map sports results separately.
 - [x] Validate standard and inverse-map prediction results through the repaired end-to-end sports workflow.
+- [x] Use a current MLB matchup as a clearly labeled standard-versus-inverse sports engine regression scenario and report both outputs.
+- [x] Audit and report verification status for active Atlas, Scholar, sports scoring, KP, standard-map, and inverse-map layers.
+- [x] Resolve the 180-degree natal Ascendant and Equal-House regression identified by the legacy natal engine validation profile.
+- [x] Trace and correct the legacy natal Ascendant orientation formula without changing the separate Zetetic direct-angle calculation.
+- [x] Rerun natal validation plus focused sports and Atlas regressions after the axis repair.
+- [ ] Resolve the legacy repository-wide TypeScript errors that prevent `pnpm check` from passing.
 - [x] Reuse or adapt Firmament’s nakshatra and fixed-star data for the isolated live Zetetic Atlas model.
 - [x] Add tropical nakshatra, pada, and fixed-star proximity enrichments to each Atlas planetary placement without changing its tropical longitude or house.
 - [x] Surface enriched fixed-star and nakshatra context in Atlas audit/inspector and Atlas Scholar prompts.
