@@ -665,6 +665,19 @@ const atlasPointSchema = z.object({
   declination: z.number().min(-90).max(90),
   azimuth: z.number().min(0).lt(360),
   altitude: z.number().min(-90).max(90),
+  nakshatra: z.object({
+    name: z.string().min(1).max(48),
+    lord: z.string().min(1).max(24),
+    pada: z.number().int().min(1).max(4),
+  }),
+  fixedStars: z.array(z.object({
+    name: z.string().min(1).max(80),
+    orb: z.number().min(0).max(2),
+    nature: z.string().min(1).max(80),
+    archetype: z.string().min(1).max(120),
+    isRoyal: z.boolean(),
+    isPolar: z.boolean(),
+  })).max(8),
 });
 
 const zeteticAtlasRouter = router({

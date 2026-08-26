@@ -64,3 +64,7 @@
 - [x] Add a secure Atlas dialogue mutation using Firmament’s existing server-side LLM infrastructure.
 - [x] Connect the Atlas route’s active chart and conversation history to the dialogue interface without exposing credentials.
 - [x] Add context-unit tests and validate a real reflective Atlas dialogue response through the live server path.
+- [x] Reuse or adapt Firmament’s nakshatra and fixed-star data for the isolated live Zetetic Atlas model.
+- [x] Add tropical nakshatra, pada, and fixed-star proximity enrichments to each Atlas planetary placement without changing its tropical longitude or house.
+- [x] Surface enriched fixed-star and nakshatra context in Atlas audit/inspector and Atlas Scholar prompts.
+- [x] Add deterministic enrichment tests and validate the resulting Atlas Scholar context.

@@ -1,4 +1,6 @@
 import * as Astronomy from "astronomy-engine";
+import { FIXED_STARS } from "./fixedStars";
+import { getNakshatraAt } from "./nakshatra";
 
 export type ZeteticInput = {
   birthDate: string;
@@ -23,6 +25,15 @@ export type ZeteticPoint = {
   declination: number;
   azimuth: number;
   altitude: number;
+  nakshatra: { name: string; lord: string; pada: number };
+  fixedStars: Array<{
+    name: string;
+    orb: number;
+    nature: string;
+    archetype: string;
+    isRoyal: boolean;
+    isPolar: boolean;
+  }>;
   color: string;
 };
 
@@ -107,6 +118,30 @@ function houseFor(longitude: number, ascendant: number) {
   return Math.floor(normalize(longitude - ascendant) / 30) + 1;
 }
 
+function shortestAngularDistance(first: number, second: number) {
+  const difference = Math.abs(normalize(first) - normalize(second));
+  return Math.min(difference, 360 - difference);
+}
+
+function fixedGridStarContext(longitude: number) {
+  return FIXED_STARS
+    .map(star => {
+      const orb = shortestAngularDistance(longitude, star.sidDegree);
+      const maximumOrb = star.isRoyal || star.isPolar ? 2 : 1.5;
+      return { star, orb, maximumOrb };
+    })
+    .filter(({ orb, maximumOrb }) => orb <= maximumOrb)
+    .sort((first, second) => first.orb - second.orb)
+    .map(({ star, orb }) => ({
+      name: star.name,
+      orb: Math.round(orb * 100) / 100,
+      nature: star.nature,
+      archetype: star.archetype,
+      isRoyal: Boolean(star.isRoyal),
+      isPolar: Boolean(star.isPolar),
+    }));
+}
+
 function eclipticToEquatorial(longitude: number) {
   const obliquity = (23.4392911 * Math.PI) / 180;
   const lambda = (longitude * Math.PI) / 180;
@@ -134,7 +169,27 @@ function makePoint(
   color: string,
 ): ZeteticPoint {
   const zodiac = zodiacFor(longitude);
-  return { key, name, short, kind, longitude, sign: zodiac.name, signSymbol: zodiac.symbol, degree: zodiac.degree, house: houseFor(longitude, ascendant), rightAscension, declination, azimuth, altitude, color };
+  const nakshatra = getNakshatraAt(longitude);
+  return {
+    key,
+    name,
+    short,
+    kind,
+    longitude,
+    sign: zodiac.name,
+    signSymbol: zodiac.symbol,
+    degree: zodiac.degree,
+    house: houseFor(longitude, ascendant),
+    rightAscension,
+    declination,
+    azimuth,
+    altitude,
+    nakshatra: { name: nakshatra.nakshatra.name, lord: nakshatra.nakshatra.lord, pada: nakshatra.pada },
+    // Permanent catalog anchors on Firmament's fixed grid, explicitly separate
+    // from live tropical planetary positions and not an ayanamsa correction.
+    fixedStars: kind === "planet" ? fixedGridStarContext(longitude) : [],
+    color,
+  };
 }
 
 export function calculateZeteticChart(input: ZeteticInput): ZeteticChart {

@@ -12,11 +12,16 @@ describe("Zetetic Atlas calculation module", () => {
       longitude: -96.797,
     });
     const sun = chart.points.find((point) => point.key === "sun");
+    const mercury = chart.points.find((point) => point.key === "mercury");
 
     expect(chart.utcDegrees).toBeCloseTo(241.5, 3);
     expect(chart.midheaven).toBeCloseTo(144.703, 3);
     expect(chart.ascendant).toBeCloseTo(234.703, 3);
     expect(sun?.longitude).toBeCloseTo(238.044, 2);
+    expect(sun?.nakshatra).toEqual({ name: "Jyeshtha", lord: "Mercury", pada: 4 });
+    expect(mercury?.fixedStars).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "Antares", isRoyal: true }),
+    ]));
   });
 
   it("produces valid longitudes, houses, horizon coordinates, and map points for another user", () => {
@@ -44,6 +49,11 @@ describe("Zetetic Atlas calculation module", () => {
       expect(point.azimuth).toBeLessThan(360);
       expect(point.altitude).toBeGreaterThanOrEqual(-90);
       expect(point.altitude).toBeLessThanOrEqual(90);
+      expect(point.nakshatra.name).toBeTruthy();
+      expect(point.nakshatra.lord).toBeTruthy();
+      expect(point.nakshatra.pada).toBeGreaterThanOrEqual(1);
+      expect(point.nakshatra.pada).toBeLessThanOrEqual(4);
+      expect(Array.isArray(point.fixedStars)).toBe(true);
       expect(Number.isFinite(gleason.x) && Number.isFinite(gleason.y)).toBe(true);
       expect(Number.isFinite(compass.x) && Number.isFinite(compass.y)).toBe(true);
     }
