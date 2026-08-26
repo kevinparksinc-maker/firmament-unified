@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { speak, stopSpeaking, isSpeaking } from "@/lib/textToSpeech";
 import { Volume2, Square } from "lucide-react";
 
@@ -157,7 +158,9 @@ export default function SportsHorary() {
     verdict: Verdict;
     score: number;
     flags: string[];
+    mapOrientation: "standard" | "inverse-180";
   } | null>(null);
+  const [mapOrientation, setMapOrientation] = useState<"standard" | "inverse-180">("standard");
   const [isSpeakingAnswer, setIsSpeakingAnswer] = useState(false);
   const [calculatedChart, setCalculatedChart] = useState<any>(null);
 
@@ -191,6 +194,7 @@ export default function SportsHorary() {
         verdict: data.verdict as Verdict,
         score: data.score,
         flags: data.flags,
+        mapOrientation: "standard",
       });
     },
     onError: err => {
@@ -209,6 +213,7 @@ export default function SportsHorary() {
         verdict: data.verdict as Verdict,
         score: data.score,
         flags: data.flags,
+        mapOrientation: data.mapOrientation,
       });
     },
     onError: err => {
@@ -322,6 +327,7 @@ export default function SportsHorary() {
         houseCusps: calculatedChart.houses.cusps,
         favoriteName: favorite || undefined,
         challengerName: challenger || undefined,
+        mapOrientation,
         history: messages
           .filter(m => m.role !== "system")
           .map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
@@ -374,6 +380,23 @@ export default function SportsHorary() {
           Ascendant (H1) = Favorite · Descendant (H7) = Challenger. The engine
           scores the chart; the oracle explains the call.
         </p>
+
+        <Tabs value={mapOrientation} onValueChange={value => {
+          const next = value as "standard" | "inverse-180";
+          setMapOrientation(next);
+          setResult(null);
+          setMessages([]);
+        }} className="mb-5">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="standard">Standard Map</TabsTrigger>
+            <TabsTrigger value="inverse-180">180° Inverse Map</TabsTrigger>
+          </TabsList>
+          <p className="mt-2 text-xs opacity-65">
+            {mapOrientation === "standard"
+              ? "Primary event-chart calculation."
+              : "Comparison layer: every event-chart longitude and cusp is rotated 180° together. It remains separate from the standard result."}
+          </p>
+        </Tabs>
 
         <div className="grid grid-cols-2 gap-3 mb-3">
           <input
@@ -459,6 +482,9 @@ export default function SportsHorary() {
 
         {result && (
           <>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
+              {result.mapOrientation === "inverse-180" ? "180° inverse-map comparison result" : "Standard-map result"}
+            </p>
             <VerdictBanner
               verdict={result.verdict}
               score={result.score}

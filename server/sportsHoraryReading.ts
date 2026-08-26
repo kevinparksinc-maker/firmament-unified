@@ -208,6 +208,7 @@ export function buildChartData(chart: Chart, ascendant?: number): ChartData {
   return {
     houseLords,
     houseAudit,
+    houses: houseCuspLons?.map((degree, index) => ({ house: index + 1, degree })),
     planetsInHouses,
     lots,
     fixedStars: [],
@@ -217,7 +218,6 @@ export function buildChartData(chart: Chart, ascendant?: number): ChartData {
       isVoidOfCourse: false,
       nakshatra: chart.Moon ? getNakshatraAt(SIGN_ORDER.indexOf(chart.Moon.sign) * 30 + chart.Moon.degree).nakshatra.name : "Ashwini",
     },
-    houseCusps: houseCuspLons,
   };
 }
 

@@ -64,6 +64,13 @@
 - [x] Add a secure Atlas dialogue mutation using Firmament’s existing server-side LLM infrastructure.
 - [x] Connect the Atlas route’s active chart and conversation history to the dialogue interface without exposing credentials.
 - [x] Add context-unit tests and validate a real reflective Atlas dialogue response through the live server path.
+- [x] Run a complete existing sports-prediction workflow after the Atlas integration and record the regression outcome.
+- [x] Repair the pre-existing KP-engine cuspal-sub-lord lookup that blocks the sports prediction result after valid event-chart generation.
+- [x] Add targeted KP cuspal-sub-lord regression coverage for the sports-prediction input contract.
+- [x] Rerun a fictional-team end-to-end sports prediction after the KP repair and record its final verdict response.
+- [x] Define an auditable 180-degree inverse-map transformation for sports chart comparison without replacing the standard chart calculation.
+- [x] Add a side-tab comparison experience that exposes standard and inverse-map sports results separately.
+- [x] Validate standard and inverse-map prediction results through the repaired end-to-end sports workflow.
 - [x] Reuse or adapt Firmament’s nakshatra and fixed-star data for the isolated live Zetetic Atlas model.
 - [x] Add tropical nakshatra, pada, and fixed-star proximity enrichments to each Atlas planetary placement without changing its tropical longitude or house.
 - [x] Surface enriched fixed-star and nakshatra context in Atlas audit/inspector and Atlas Scholar prompts.

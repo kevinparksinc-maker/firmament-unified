@@ -58,7 +58,10 @@ export function kpDecisionLayer(chart: ChartData, config: ClusterConfig): LayerB
   // 1. Cuspal Sub-Lord Logic
   // The Sub-Lord of the 6th house cusp (victory) is the most important in KP horary.
   const getCuspalSubLord = (houseNum: number) => {
-    const cusp = chart.houses.find(h => h.house === houseNum);
+    // Standard sports charts provide equal-house cusp longitudes through the
+    // chart builder. Older chart fixtures may omit them, in which case KP
+    // cuspal scoring safely abstains instead of crashing the entire verdict.
+    const cusp = chart.houses?.find(h => h.house === houseNum);
     if (!cusp) return null;
     return getKPStellarDetails(cusp.degree).subLord;
   };

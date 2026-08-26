@@ -19,6 +19,22 @@ import { calculateFullPrediction, type ChartData, type ClusterConfig } from "./m
 import { calculateTerritorialControl, formatTerritorialReport } from "./territorialControlEngine";
 
 type Chart = Record<string, PlanetPlacement>;
+export type SportsMapOrientation = "standard" | "inverse-180";
+
+const normalizeDegree = (value: number) => ((value % 360) + 360) % 360;
+
+/**
+ * Produces a comparison-only antipodal chart. Every ecliptic point and the
+ * Ascendant move by 180°, preserving their mutual spacing and equal-house
+ * relationship. This never replaces the standard event chart.
+ */
+export function invertSportsChart180(chart: Chart): Chart {
+  return Object.fromEntries(Object.entries(chart).map(([name, placement]) => {
+    const longitude = normalizeDegree((placement.eclipticLon ?? SIGN_ORDER.indexOf(placement.sign) * 30 + placement.degree) + 180);
+    const sign = SIGN_ORDER[Math.floor(longitude / 30)] ?? "Aries";
+    return [name, { ...placement, eclipticLon: longitude, sign, degree: longitude % 30 }];
+  }));
+}
 
 export interface SportsHoraryV2Input {
   question: string;
@@ -27,6 +43,7 @@ export interface SportsHoraryV2Input {
   favoriteName?: string;
   challengerName?: string;
   history?: Message[];
+  mapOrientation?: SportsMapOrientation;
 }
 
 export interface SportsHoraryV2Output {
@@ -35,6 +52,7 @@ export interface SportsHoraryV2Output {
   score: number;
   flags: string[];
   usedChart: "transit" | "natal";
+  mapOrientation: SportsMapOrientation;
   margin: number;
   territorialControl: {
     sideATotal: number;
@@ -110,11 +128,18 @@ export async function sportsHoraryV2Layer(
   const usedChart: "transit" | "natal" =
     Object.keys(transits).length >= 5 ? "transit" : "natal";
 
-  const chart = usedChart === "transit" ? transits : natal;
+  const standardChart = usedChart === "transit" ? transits : natal;
+  const mapOrientation = input.mapOrientation ?? "standard";
+  const chart = mapOrientation === "inverse-180" ? invertSportsChart180(standardChart) : standardChart;
   // Root bug (same as v1): ascendant was parsed by astroEngine but never
   // retrieved here, so Arabic Lots were always [] and, when a duplicate
   // local buildChartData existed, always defaulted to house 1.
-  const ascendant = result?.ascendant ?? undefined;
+  const standardAscendant = result?.ascendant ?? undefined;
+  const ascendant = standardAscendant === undefined
+    ? undefined
+    : mapOrientation === "inverse-180"
+      ? normalizeDegree(standardAscendant + 180)
+      : standardAscendant;
   const chartData = buildChartData(chart, ascendant);
 
   if (chartData.houseLords.length === 0) {
@@ -124,6 +149,7 @@ export async function sportsHoraryV2Layer(
       score: 0,
       flags: ["insufficient_data"],
       usedChart,
+      mapOrientation,
       margin: 0,
       territorialControl: {
         sideATotal: 0,
@@ -187,6 +213,7 @@ export async function sportsHoraryV2Layer(
     score: prediction.sideATotal - prediction.sideBTotal,
     flags: [],
     usedChart,
+    mapOrientation,
     margin: prediction.margin,
     territorialControl,
   };

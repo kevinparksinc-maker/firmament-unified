@@ -809,6 +809,7 @@ const sportsHoraryRouter = router({
         houseCusps: z.array(z.number()),
         favoriteName: z.string().optional(),
         challengerName: z.string().optional(),
+        mapOrientation: z.enum(["standard", "inverse-180"]).optional(),
         history: z
           .array(
             z.object({
@@ -852,6 +853,7 @@ const sportsHoraryRouter = router({
         transitText: transitTextWithAsc,
         favoriteName: input.favoriteName,
         challengerName: input.challengerName,
+        mapOrientation: input.mapOrientation,
         history: input.history as any,
       });
 

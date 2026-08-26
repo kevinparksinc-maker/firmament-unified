@@ -104,6 +104,8 @@ export interface HouseAuditEntry {
 export interface ChartData {
   houseLords: HouseLord[];
   houseAudit?: HouseAuditEntry[];
+  /** Numeric cusp longitudes supplied to the KP cuspal-sub-lord layer. */
+  houses?: Array<{ house: number; degree: number }>;
   planetsInHouses: SportsHoraryPlacement[];
   lots: ArabicLot[];
   fixedStars: FixedStarConjunction[];
