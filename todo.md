@@ -54,3 +54,9 @@
 - [x] Add MC (Midheaven) and IC to ephemeris output
 - [x] Build 2D SVG house wheel component showing all 12 houses with sign cusps and planet placements
 - [x] Show the wheel after birth data calculation
+- [x] Add a separate Zetetic Atlas route without modifying the existing sports-prediction route or natal engine.
+- [x] Implement live Astronomy Engine tropical longitudes with IANA local-time-to-UTC conversion and direct Zetetic MC/Ascendant angles.
+- [x] Add 30° Equal Houses, RA/declination Gleason placement, and topocentric local compass coordinates to the isolated Atlas chart model.
+- [x] Build an auditable Zetetic Atlas user interface and navigation entry within Firmament.
+- [x] Add deterministic Zetetic and arbitrary-date coordinate tests, then validate the new route alongside the existing sports route.
+- [ ] Address the existing repository-wide TypeScript backlog that prevents `pnpm check` from passing independently of Zetetic Atlas changes.

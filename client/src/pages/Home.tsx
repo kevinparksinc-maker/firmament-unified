@@ -1062,6 +1062,10 @@ export default function Home() {
           <Link href="/sports" style={{ color: "var(--ember)", textDecoration: "none", opacity: 0.7, transition: "opacity 0.3s" }} onMouseEnter={e => e.currentTarget.style.opacity = "1"} onMouseLeave={e => e.currentTarget.style.opacity = "0.7"}>
             ✦ SPORTS PREDICTION ✦
           </Link>
+          <span style={{ color: "var(--rim)", margin: "0 12px" }}>·</span>
+          <Link href="/zetetic-atlas" style={{ color: "var(--ice)", textDecoration: "none", opacity: 0.8, transition: "opacity 0.3s" }} onMouseEnter={e => e.currentTarget.style.opacity = "1"} onMouseLeave={e => e.currentTarget.style.opacity = "0.8"}>
+            ✦ ZETETIC ATLAS ✦
+          </Link>
         </div>
       </header>
 

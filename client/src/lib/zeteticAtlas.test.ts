@@ -1,0 +1,51 @@
+import { describe, expect, it } from "vitest";
+import { calculateZeteticChart, compassPoint, gleasonPoint } from "./zeteticAtlas";
+
+describe("Zetetic Atlas calculation module", () => {
+  it("retains the Dallas direct UTC-degree axes while sourcing planets live", () => {
+    const chart = calculateZeteticChart({
+      birthDate: "1986-11-20",
+      birthTime: "10:06",
+      timezone: "America/Chicago",
+      location: "Dallas, Texas",
+      latitude: 32.7767,
+      longitude: -96.797,
+    });
+    const sun = chart.points.find((point) => point.key === "sun");
+
+    expect(chart.utcDegrees).toBeCloseTo(241.5, 3);
+    expect(chart.midheaven).toBeCloseTo(144.703, 3);
+    expect(chart.ascendant).toBeCloseTo(234.703, 3);
+    expect(sun?.longitude).toBeCloseTo(238.044, 2);
+  });
+
+  it("produces valid longitudes, houses, horizon coordinates, and map points for another user", () => {
+    const chart = calculateZeteticChart({
+      birthDate: "2000-01-15",
+      birthTime: "12:00",
+      timezone: "Europe/London",
+      location: "London, United Kingdom",
+      latitude: 51.5074,
+      longitude: -0.1278,
+    });
+
+    for (const point of chart.points) {
+      const gleason = gleasonPoint(point.rightAscension, point.declination);
+      const compass = compassPoint(point.azimuth, point.altitude);
+      expect(point.longitude).toBeGreaterThanOrEqual(0);
+      expect(point.longitude).toBeLessThan(360);
+      expect(point.house).toBeGreaterThanOrEqual(1);
+      expect(point.house).toBeLessThanOrEqual(12);
+      expect(point.rightAscension).toBeGreaterThanOrEqual(0);
+      expect(point.rightAscension).toBeLessThan(24);
+      expect(point.declination).toBeGreaterThanOrEqual(-90);
+      expect(point.declination).toBeLessThanOrEqual(90);
+      expect(point.azimuth).toBeGreaterThanOrEqual(0);
+      expect(point.azimuth).toBeLessThan(360);
+      expect(point.altitude).toBeGreaterThanOrEqual(-90);
+      expect(point.altitude).toBeLessThanOrEqual(90);
+      expect(Number.isFinite(gleason.x) && Number.isFinite(gleason.y)).toBe(true);
+      expect(Number.isFinite(compass.x) && Number.isFinite(compass.y)).toBe(true);
+    }
+  });
+});
