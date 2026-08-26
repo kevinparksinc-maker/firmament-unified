@@ -1,4 +1,5 @@
 export const STRICT_COMBUSTION_THRESHOLD_DEGREES = 15;
+export const KAZIMI_THRESHOLD_DEGREES = 0.5;
 
 export type EssentialDignityStatus =
   | "domicile"
@@ -16,7 +17,9 @@ export type AtlasDignity = {
 
 export type AtlasCombustion = {
   applicable: boolean;
+  isKazimi: boolean;
   isCombust: boolean;
+  status: "not-applicable" | "kazimi" | "combust" | "clear";
   angularDistance: number | null;
   threshold: number;
   rule: string;
@@ -93,9 +96,13 @@ export function getAtlasDignity(planet: string, sign: string): AtlasDignity {
 export function getStrictCombustion(planet: string, longitude: number, sunLongitude: number): AtlasCombustion {
   const applicable = planet !== "Sun";
   const angularDistance = applicable ? shortestAngularDistance(longitude, sunLongitude) : null;
+  const isKazimi = angularDistance !== null && angularDistance <= KAZIMI_THRESHOLD_DEGREES;
+  const isCombust = angularDistance !== null && !isKazimi && angularDistance <= STRICT_COMBUSTION_THRESHOLD_DEGREES;
   return {
     applicable,
-    isCombust: angularDistance !== null && angularDistance <= STRICT_COMBUSTION_THRESHOLD_DEGREES,
+    isKazimi,
+    isCombust,
+    status: !applicable ? "not-applicable" : isKazimi ? "kazimi" : isCombust ? "combust" : "clear",
     angularDistance,
     threshold: STRICT_COMBUSTION_THRESHOLD_DEGREES,
     rule: "Strict raw tropical longitude: shortest Sun–planet distance ≤ 15.0°",

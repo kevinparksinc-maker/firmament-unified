@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAtlasDignity, getStrictCombustion, STRICT_COMBUSTION_THRESHOLD_DEGREES } from "./atlasDignities";
+import { getAtlasDignity, getStrictCombustion, KAZIMI_THRESHOLD_DEGREES, STRICT_COMBUSTION_THRESHOLD_DEGREES } from "./atlasDignities";
 import { calculateZeteticChart } from "./zeteticAtlas";
 
 describe("Atlas dignities and strict combustion", () => {
@@ -18,6 +18,13 @@ describe("Atlas dignities and strict combustion", () => {
     expect(combustSaturn.isCombust).toBe(true);
     expect(getStrictCombustion("Mars", 326.352, 238.044).isCombust).toBe(false);
     expect(getStrictCombustion("Sun", 238.044, 238.044)).toMatchObject({ applicable: false, isCombust: false, angularDistance: null });
+  });
+
+  it("gives the 0.5° kazimi state precedence over the 15° combustion state", () => {
+    const kazimiMercury = getStrictCombustion("Mercury", 238.4, 238.044);
+    expect(kazimiMercury.angularDistance).toBeCloseTo(0.356, 3);
+    expect(kazimiMercury).toMatchObject({ isKazimi: true, isCombust: false, status: "kazimi" });
+    expect(KAZIMI_THRESHOLD_DEGREES).toBe(0.5);
   });
 
   it("records the live Dallas Saturn combustion evidence on the calculated chart", () => {

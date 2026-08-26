@@ -2,6 +2,7 @@ import * as AstronomyModule from "astronomy-engine";
 import { FIXED_STARS } from "./fixedStars";
 import { getNakshatraAt } from "./nakshatra";
 import { getAtlasDignity, getStrictCombustion, type AtlasCombustion, type AtlasDignity } from "./atlasDignities";
+import { ATLAS_PHENOMENA_REGISTRY, findAtlasPlanetaryWars, getAtlasMotion, type AtlasMotion, type AtlasPlanetaryWar } from "./atlasPhenomena";
 
 const astronomyDefault = Reflect.get(AstronomyModule, "default") as typeof AstronomyModule | undefined;
 const Astronomy = astronomyDefault ?? AstronomyModule;
@@ -40,6 +41,7 @@ export type ZeteticPoint = {
   nakshatra: { name: string; lord: string; pada: number };
   dignity: AtlasDignity;
   combustion: AtlasCombustion;
+  motion: AtlasMotion;
   fixedStars: Array<{
     name: string;
     orb: number;
@@ -70,6 +72,7 @@ export type ZeteticChart = {
   imumCoeli: number;
   houses: ZeteticHouse[];
   points: ZeteticPoint[];
+  planetaryWars: AtlasPlanetaryWar[];
 };
 
 const ZODIAC = [
@@ -183,6 +186,7 @@ function makePoint(
   ascendant: number,
   color: string,
   sunLongitude: number,
+  motion: AtlasMotion,
 ): ZeteticPoint {
   const zodiac = zodiacFor(longitude);
   const nakshatra = getNakshatraAt(longitude);
@@ -199,7 +203,8 @@ function makePoint(
     dignity: getAtlasDignity(name, zodiac.name),
     combustion: kind === "planet"
       ? getStrictCombustion(name, longitude, sunLongitude)
-      : { applicable: false, isCombust: false, angularDistance: null, threshold: 15, rule: "Strict raw tropical longitude: shortest Sun–planet distance ≤ 15.0°" },
+      : { applicable: false, isKazimi: false, isCombust: false, status: "not-applicable", angularDistance: null, threshold: 15, rule: "Strict raw tropical longitude: shortest Sun–planet distance ≤ 15.0°" },
+    motion,
     rightAscension,
     declination,
     azimuth,
@@ -224,15 +229,20 @@ export function calculateZeteticChart(input: ZeteticInput): ZeteticChart {
 
   const livePlanetCoordinates = PLANETS.map(([name, short, body, color]) => {
     const longitude = normalize(Astronomy.Ecliptic(Astronomy.GeoVector(body, time, false)).elon);
+    const halfWindowDays = ATLAS_PHENOMENA_REGISTRY.retrograde.sampleHalfWindowDays;
+    const longitudeBefore = normalize(Astronomy.Ecliptic(Astronomy.GeoVector(body, time.AddDays(-halfWindowDays), false)).elon);
+    const longitudeAfter = normalize(Astronomy.Ecliptic(Astronomy.GeoVector(body, time.AddDays(halfWindowDays), false)).elon);
+    const motion = getAtlasMotion(longitudeBefore, longitudeAfter, halfWindowDays * 2);
     const equator = Astronomy.Equator(body, time, observer, true, true);
     const horizon = Astronomy.Horizon(time, observer, equator.ra, equator.dec, "normal");
-    return { name, short, color, longitude, equator, horizon };
+    return { name, short, color, longitude, motion, equator, horizon };
   });
   const sunLongitude = livePlanetCoordinates.find(point => point.name === "Sun")?.longitude;
   if (sunLongitude === undefined) throw new Error("Live Sun longitude is required to evaluate combustion.");
-  const planets = livePlanetCoordinates.map(({ name, short, color, longitude, equator, horizon }) =>
-    makePoint(name.toLowerCase(), name, short, "planet", longitude, equator.ra, equator.dec, horizon.azimuth, horizon.altitude, ascendant, color, sunLongitude)
+  const planets = livePlanetCoordinates.map(({ name, short, color, longitude, motion, equator, horizon }) =>
+    makePoint(name.toLowerCase(), name, short, "planet", longitude, equator.ra, equator.dec, horizon.azimuth, horizon.altitude, ascendant, color, sunLongitude, motion)
   );
+  const planetaryWars = findAtlasPlanetaryWars(planets);
 
   const markers = [
     ["north-node", "North Node", "☊", "node", meanNorthNode(time), "#72c5b4"],
@@ -246,7 +256,7 @@ export function calculateZeteticChart(input: ZeteticInput): ZeteticChart {
   const points = markers.map(([key, name, short, kind, longitude, color]) => {
     const equatorial = eclipticToEquatorial(longitude);
     const horizon = Astronomy.Horizon(time, observer, equatorial.rightAscension, equatorial.declination, "normal");
-    return makePoint(key, name, short, kind, longitude, equatorial.rightAscension, equatorial.declination, horizon.azimuth, horizon.altitude, ascendant, color, sunLongitude);
+    return makePoint(key, name, short, kind, longitude, equatorial.rightAscension, equatorial.declination, horizon.azimuth, horizon.altitude, ascendant, color, sunLongitude, { applicable: false, speedDegreesPerDay: null, isRetrograde: false, rule: ATLAS_PHENOMENA_REGISTRY.retrograde.rule });
   });
 
   const houses = Array.from({ length: 12 }, (_, index) => {
@@ -257,5 +267,5 @@ export function calculateZeteticChart(input: ZeteticInput): ZeteticChart {
     return { number: index + 1, start, end, startLabel: `${startZodiac.symbol} ${startZodiac.name} ${startZodiac.degree.toFixed(1)}°`, endLabel: `${endZodiac.symbol} ${endZodiac.name} ${endZodiac.degree.toFixed(1)}°` };
   });
 
-  return { baseline: ATLAS_CALCULATION_BASELINE, input, utcDate, utcDegrees, ascendant, descendant, midheaven, imumCoeli, houses, points: [...planets, ...points] };
+  return { baseline: ATLAS_CALCULATION_BASELINE, input, utcDate, utcDegrees, ascendant, descendant, midheaven, imumCoeli, houses, points: [...planets, ...points], planetaryWars };
 }

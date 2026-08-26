@@ -92,3 +92,9 @@
 - [x] Add strict 15.0° Sun–planet combustion detection with raw angular distance and threshold recorded for every applicable Atlas planet.
 - [x] Display dignities and combustion evidence in Atlas Audit Mode, the selected-point panel, and Atlas Scholar context.
 - [x] Add deterministic dignity and combustion regressions, including Dallas Saturn’s live 12.55° combust result, then validate the Atlas route.
+- [x] Define a local versioned Atlas phenomena registry for retrograde, kazimi, planetary-war proximity, dignities, and combustion without external runtime lookups.
+- [x] Derive live planetary motion direction and speed from Astronomy Engine data and flag retrograde when the declared longitudinal motion is negative.
+- [x] Add a 0.5° raw Sun-distance kazimi rule that takes precedence over the strict 15.0° combustion display.
+- [x] Scan Mars, Mercury, Venus, Jupiter, and Saturn pair distances using the declared 1.0° planetary-war threshold.
+- [x] Display detected phenomena and their raw evidence in Atlas Audit Mode, selected-point detail, and Atlas Scholar context.
+- [x] Add deterministic phenomena regressions, validate the Atlas route, and keep all detection labels separate from symbolic interpretation text.

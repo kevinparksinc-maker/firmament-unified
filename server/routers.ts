@@ -685,10 +685,18 @@ const atlasPointSchema = z.object({
   }),
   combustion: z.object({
     applicable: z.boolean(),
+    isKazimi: z.boolean(),
     isCombust: z.boolean(),
+    status: z.enum(["not-applicable", "kazimi", "combust", "clear"]),
     angularDistance: z.number().min(0).max(180).nullable(),
     threshold: z.literal(15),
     rule: z.string().min(1).max(160),
+  }),
+  motion: z.object({
+    applicable: z.boolean(),
+    speedDegreesPerDay: z.number().min(-360).max(360).nullable(),
+    isRetrograde: z.boolean(),
+    rule: z.string().min(1).max(200),
   }),
 });
 
@@ -725,6 +733,13 @@ const zeteticAtlasRouter = router({
             endLabel: z.string().max(80),
           })).length(12),
           points: z.array(atlasPointSchema).min(10).max(20),
+          planetaryWars: z.array(z.object({
+            first: z.string().min(1).max(80),
+            second: z.string().min(1).max(80),
+            distance: z.number().min(0).max(180),
+            threshold: z.literal(1),
+            rule: z.string().min(1).max(200),
+          })).max(10),
         }),
         history: z.array(z.object({
           role: z.enum(["user", "assistant"]),
