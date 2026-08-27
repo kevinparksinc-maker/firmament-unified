@@ -22,6 +22,7 @@ import { sportsHoraryV2Layer } from "./sportsHoraryV2Reading";
 import { calculateFrawleyEvent } from "./frawleyEventEngine";
 import { calculateTajikaPrasnaEvent } from "./tajikaPrasnaEngine";
 import { ARCHETYPES, calculatePanchangaArchetype } from "./panchangaArchetypeEngine";
+import { calculateGodAgentFamilyFlow } from "./godAgentFlowEngine";
 
 import {
   detectFixedStarConjunctions,
@@ -910,6 +911,43 @@ const sportsHoraryRouter = router({
       });
       return {
         answer: `**${result.verdict}**\n\n${result.reason}\n\nThis is a separate Panchanga / Team Archetype result using user-documented profiles. It does not use Cluster/Territorial points, Frawley, Tajika/Prasna, KP, Atlas, confidence percentages, or betting recommendations.`,
+        result,
+      };
+    }),
+  godAgentFlow: publicProcedure
+    .input(
+      z.object({
+        question: z.string().min(1).max(2000),
+        year: z.number().int().min(1900).max(2100),
+        month: z.number().int().min(1).max(12),
+        day: z.number().int().min(1).max(31),
+        hour: z.number().int().min(0).max(23),
+        minute: z.number().int().min(0).max(59),
+        venueName: z.string().trim().min(2).max(160),
+        latitude: z.number().finite().min(-90).max(90),
+        longitude: z.number().finite().min(-180).max(180),
+        favoriteName: z.string().trim().min(1).max(160),
+        challengerName: z.string().trim().min(1).max(160),
+        favoriteSource: z.string().trim().min(3).max(600),
+        mapOrientation: z.enum(["standard", "inverse-180"]).default("standard"),
+      })
+    )
+    .mutation(({ input }) => {
+      const timezone = tzLookup(input.latitude, input.longitude);
+      const localTime = `${input.year}-${String(input.month).padStart(2, "0")}-${String(input.day).padStart(2, "0")} ${String(input.hour).padStart(2, "0")}:${String(input.minute).padStart(2, "0")}:00`;
+      const result = calculateGodAgentFamilyFlow({
+        local: { year: input.year, month: input.month, day: input.day, hour: input.hour, minute: input.minute },
+        utcDate: fromZonedTime(localTime, timezone),
+        latitude: input.latitude,
+        longitude: input.longitude,
+        venueName: input.venueName,
+        favoriteName: input.favoriteName,
+        challengerName: input.challengerName,
+        favoriteSource: input.favoriteSource,
+        orientation: input.mapOrientation,
+      });
+      return {
+        answer: `**${result.verdict}**\n\n${result.reason}\n\nGod View saw only the fixed ASC-versus-DSC RA/declination axis. The Agent View separately calculated the local receiving house families. Their convergence or conflict is shown without blending values or forcing an outcome.`,
         result,
       };
     }),

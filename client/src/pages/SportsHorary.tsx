@@ -104,7 +104,7 @@ type LayerVoteScorecard = {
   aggregateReason: string;
 };
 
-type SportsMethod = "cluster" | "frawley" | "tajika-prasna" | "panchanga";
+type SportsMethod = "cluster" | "frawley" | "tajika-prasna" | "panchanga" | "god-agent";
 type Archetype = "warrior" | "intellectual" | "merchant" | "laborer";
 
 type ArchetypeProfileInput = {
@@ -196,6 +196,59 @@ type PanchangaArchetypeResult = {
   }>;
   scoreDifference: number | null;
   noCallReasons: string[];
+};
+
+type GodAgentFlowResult = {
+  version: "god-agent-family-flow-v1";
+  method: "God View / Agent View Family Flow";
+  orientation: "standard" | "inverse-180";
+  status: "ready" | "no-call";
+  outcome: "side-a-context" | "side-b-context" | "no-call";
+  verdict: string;
+  reason: string;
+  event: {
+    venueName: string;
+    eventUtcIso: string;
+    favoriteName: string;
+    challengerName: string;
+    favoriteSource: string;
+    agentHouseSystem: "Placidus";
+    agentHouseEngine: string;
+    agentMapping: string;
+  };
+  godView: {
+    version: "god-axis-v1";
+    orientation: "standard" | "inverse-180";
+    referenceFrame: string;
+    axes: { godAscRaHours: number; godDscRaHours: number };
+    counts: { asc: number; dsc: number; quadrature: number; boundary: number; eligible: number };
+    polarity: "asc" | "dsc" | "tie" | "abstain";
+    strength: string;
+    reason: string;
+    points: Array<{ planet: string; geocentricRaHours: number; orientedRaHours: number; declination: number; declinationBand: string; sector: "god-asc" | "god-dsc" | "quadrature" | "boundary"; distanceToBoundaryHours: number }>;
+  };
+  agentView: {
+    familyHouses: { asc: number[]; dsc: number[] };
+    counts: { asc: number; dsc: number; eligible: number };
+    polarity: "asc" | "dsc" | "tie";
+    strength: string;
+    cusps: Array<{ house: number; longitude: number }>;
+  };
+  familyFlow: {
+    rows: Array<{ planet: string; sector: string; agentHouse: number; agentFamily: string; flowCell: string }>;
+    cells: Record<string, number>;
+    note: string;
+  };
+  synthesis: {
+    state: "asc-convergence" | "dsc-convergence" | "cross-view-conflict" | "neutral";
+    agreementCount: number;
+    godPolarity: string;
+    agentPolarity: string;
+    godStrength: string;
+    agentStrength: string;
+    publicRule: string;
+  };
+  conflicts: string[];
 };
 
 function VerdictBanner({
@@ -414,6 +467,54 @@ function PanchangaArchetypeAudit({ result }: { result: PanchangaArchetypeResult 
   );
 }
 
+function GodAgentFlowAudit({ result }: { result: GodAgentFlowResult }) {
+  const titleColor = result.synthesis.state === "asc-convergence"
+    ? "text-emerald-700 dark:text-emerald-300"
+    : result.synthesis.state === "dsc-convergence"
+      ? "text-rose-700 dark:text-rose-300"
+      : "text-amber-700 dark:text-amber-300";
+  const label = (polarity: string) => polarity === "asc" ? "ASC polarity" : polarity === "dsc" ? "DSC polarity" : polarity === "tie" ? "Tie" : "Abstain";
+
+  return (
+    <section className="mb-5 rounded-lg border border-primary/40 bg-card p-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Separate experimental method</p>
+          <h2 className="mt-1 text-lg font-semibold">{result.method}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{result.reason}</p>
+        </div>
+        <span className="rounded border border-primary/40 bg-primary/10 px-2 py-1 font-mono text-xs text-primary">{result.version}</span>
+      </div>
+
+      <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
+        <div className="rounded bg-muted/50 p-2"><span className="block text-xs text-muted-foreground">God View — fixed pole axis</span><strong>{label(result.godView.polarity)} · {result.godView.strength}</strong><span className="mt-1 block font-mono text-xs text-muted-foreground">{result.godView.counts.asc} ASC / {result.godView.counts.dsc} DSC</span></div>
+        <div className="rounded bg-muted/50 p-2"><span className="block text-xs text-muted-foreground">Agent View — local receiver</span><strong>{label(result.agentView.polarity)} · {result.agentView.strength}</strong><span className="mt-1 block font-mono text-xs text-muted-foreground">{result.agentView.counts.asc} ASC family / {result.agentView.counts.dsc} DSC family</span></div>
+        <div className="rounded bg-muted/50 p-2"><span className="block text-xs text-muted-foreground">Synthesis — direction first</span><strong className={titleColor}>{result.synthesis.state.replaceAll("-", " ")}</strong><span className="mt-1 block font-mono text-xs text-muted-foreground">Agreement: {result.synthesis.agreementCount}/2</span></div>
+      </div>
+
+      <p className="mt-3 rounded border border-border bg-muted/20 p-2 text-xs text-muted-foreground"><strong>God View boundary:</strong> it received only the exact UTC instant and classified fixed EQJ/J2000 RA/declination sectors. Team names, venue, local angles, and local houses enter only in the separate Agent receiver chart below.</p>
+      <p className="mt-2 text-xs text-muted-foreground">Event UTC: <span className="font-mono">{result.event.eventUtcIso}</span> · Venue for Agent View: {result.event.venueName} · {result.event.agentHouseSystem} via {result.event.agentHouseEngine}</p>
+
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full min-w-[800px] text-left text-xs">
+          <thead className="border-b border-border text-muted-foreground"><tr><th className="pb-2 pr-3">Planet</th><th className="pb-2 pr-3">God RA</th><th className="pb-2 pr-3">Declination</th><th className="pb-2 pr-3">God sector</th><th className="pb-2 pr-3">Agent receiver</th><th className="pb-2">Flow cell</th></tr></thead>
+          <tbody>{result.familyFlow.rows.map((row, index) => {
+            const point = result.godView.points[index];
+            return <tr key={row.planet} className="border-b border-border/60 last:border-0"><td className="py-2 pr-3 font-semibold">{row.planet}</td><td className="py-2 pr-3 font-mono">{point?.orientedRaHours.toFixed(4)}h</td><td className="py-2 pr-3 font-mono">{point?.declination.toFixed(3)}° {point?.declinationBand}</td><td className="py-2 pr-3">{row.sector.replaceAll("-", " ")}</td><td className="py-2 pr-3">H{row.agentHouse} · {row.agentFamily.replaceAll("-", " ")}</td><td className="py-2 font-mono">{row.flowCell}</td></tr>;
+          })}</tbody>
+        </table>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-3 text-xs">
+        {Object.entries(result.familyFlow.cells).map(([cell, count]) => <div key={cell} className="rounded border border-border bg-muted/20 p-2"><span className="block text-muted-foreground">{cell.replaceAll("-", " → ")}</span><strong className="text-sm">{count}</strong></div>)}
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">{result.familyFlow.note}</p>
+      <p className="mt-2 text-xs text-muted-foreground"><strong>Public rule:</strong> {result.synthesis.publicRule}</p>
+      {result.conflicts.length > 0 && <p className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-200"><strong>Conflict / no-call evidence:</strong> {result.conflicts.join(" ")}</p>}
+    </section>
+  );
+}
+
 export default function SportsHorary() {
   const [favorite, setFavorite] = useState("");
   const [challenger, setChallenger] = useState("");
@@ -440,6 +541,7 @@ export default function SportsHorary() {
   const [mapOrientation, setMapOrientation] = useState<"standard" | "inverse-180">("standard");
   const [eventMethodResult, setEventMethodResult] = useState<EventMethodResult | null>(null);
   const [panchangaResult, setPanchangaResult] = useState<PanchangaArchetypeResult | null>(null);
+  const [godAgentResult, setGodAgentResult] = useState<GodAgentFlowResult | null>(null);
   const [isSpeakingAnswer, setIsSpeakingAnswer] = useState(false);
   const [calculatedChart, setCalculatedChart] = useState<any>(null);
 
@@ -526,9 +628,22 @@ export default function SportsHorary() {
       setMessages(prev => [...prev, { role: "assistant", content: typed.answer }]);
       setPanchangaResult(typed.result);
       setEventMethodResult(null);
+      setGodAgentResult(null);
       setResult(null);
     },
     onError: err => setMessages(prev => [...prev, { role: "assistant", content: `Panchanga / Team Archetype method could not run: ${err.message}` }]),
+  });
+
+  const godAgentFlow = trpc.sportsHorary.godAgentFlow.useMutation({
+    onSuccess: data => {
+      const typed = data as { answer: string; result: GodAgentFlowResult };
+      setMessages(prev => [...prev, { role: "assistant", content: typed.answer }]);
+      setGodAgentResult(typed.result);
+      setEventMethodResult(null);
+      setPanchangaResult(null);
+      setResult(null);
+    },
+    onError: err => setMessages(prev => [...prev, { role: "assistant", content: `God View / Agent View flow could not run: ${err.message}` }]),
   });
 
   const handleCalculateChart = () => {
@@ -666,9 +781,11 @@ export default function SportsHorary() {
       setResult(null);
       setEventMethodResult(null);
       setPanchangaResult(null);
+      setGodAgentResult(null);
       const request = { question: content, ...eventRecord };
       if (sportsMethod === "frawley") frawleyEvent.mutate(request);
       else if (sportsMethod === "tajika-prasna") tajikaPrasnaEvent.mutate(request);
+      else if (sportsMethod === "god-agent") godAgentFlow.mutate(request);
       else panchangaArchetype.mutate(request);
       return;
     }
@@ -683,6 +800,7 @@ export default function SportsHorary() {
     setMessages(next);
     setEventMethodResult(null);
     setPanchangaResult(null);
+    setGodAgentResult(null);
     if (calculatedChart && calculatedChart.planets && calculatedChart.houses?.cusps) {
       askWithChart.mutate({
         question: content,
@@ -746,13 +864,15 @@ export default function SportsHorary() {
           setResult(null);
           setEventMethodResult(null);
           setPanchangaResult(null);
+          setGodAgentResult(null);
           setMessages([]);
         }} className="mb-5">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5">
             <TabsTrigger value="cluster">Cluster / Layer Vote</TabsTrigger>
             <TabsTrigger value="frawley">Frawley Event</TabsTrigger>
             <TabsTrigger value="tajika-prasna">Tajika / Prasna</TabsTrigger>
             <TabsTrigger value="panchanga">Panchanga / Archetype</TabsTrigger>
+            <TabsTrigger value="god-agent">God ↔ Agent Flow</TabsTrigger>
           </TabsList>
           <p className="mt-2 text-xs opacity-65">
             {sportsMethod === "cluster"
@@ -761,7 +881,9 @@ export default function SportsHorary() {
                 ? "Frawley event chart: real start and exact venue, Placidus houses, four significators, Moon completion, and no blended score."
                 : sportsMethod === "tajika-prasna"
                   ? "Tajika/Prasna event chart: real start and exact venue, Placidus houses, signed motion, direct completion yogas, and no blended score."
-                  : "Panchanga / Team Archetype: real venue time plus user-documented overall team-play profiles. No profile means no call."}
+                  : sportsMethod === "panchanga"
+                    ? "Panchanga / Team Archetype: real venue time plus user-documented overall team-play profiles. No profile means no call."
+                    : "God ↔ Agent Flow: a fixed God ASC-versus-DSC RA/declination axis, plus a separate local Agent house-family receiver field. Direction comes before magnitude; conflict means no call."}
           </p>
         </Tabs>
 
@@ -771,6 +893,7 @@ export default function SportsHorary() {
           setResult(null);
           setEventMethodResult(null);
           setPanchangaResult(null);
+          setGodAgentResult(null);
           setMessages([]);
         }} className="mb-5">
           <TabsList className="grid w-full grid-cols-2">
@@ -779,8 +902,9 @@ export default function SportsHorary() {
           </TabsList>
           <p className="mt-2 text-xs opacity-65">
             {mapOrientation === "standard"
-              ? "Primary event-chart calculation."
-              : "Comparison layer: every event-chart longitude and cusp is rotated 180° together. It remains separate from the standard result."}
+              ? sportsMethod === "god-agent" ? "Primary God-axis result: the fixed RA 0h God-ASC pole is compared with the RA 12h God-DSC pole; Agent View is a separate local receiver chart." : "Primary event-chart calculation."
+              : sportsMethod === "god-agent" ? "Audit only: the symmetric God axis is shifted twelve RA hours, so any non-neutral polarity is the mechanical complement of standard—not independent confirmation."
+                : "Comparison layer: every event-chart longitude and cusp is rotated 180° together. It remains separate from the standard result."}
           </p>
         </Tabs> : <p className="mb-5 rounded border border-primary/30 bg-primary/5 p-2 text-xs text-muted-foreground">Panchanga is an event-instant method. It has no inverse-180 chart orientation and cannot be pooled with chart methods.</p>}
 
@@ -901,10 +1025,10 @@ export default function SportsHorary() {
           />
         </> : <p className="mb-4 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">The selected method calculates its own named Placidus event chart when you submit a question. The manual Cluster/Territorial placement box is intentionally excluded.</p>}
 
-        {(result || eventMethodResult || panchangaResult) && (
+        {(result || eventMethodResult || panchangaResult || godAgentResult) && (
           <>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
-              {panchangaResult ? "Event-instant method result" : (result?.mapOrientation ?? eventMethodResult?.orientation) === "inverse-180" ? "180° inverse-map comparison result" : "Standard-map result"}
+              {panchangaResult ? "Event-instant method result" : (result?.mapOrientation ?? eventMethodResult?.orientation ?? godAgentResult?.orientation) === "inverse-180" ? "180° inverse-map comparison result" : "Standard-map result"}
             </p>
             {result && <VerdictBanner
               verdict={result.verdict}
@@ -923,6 +1047,7 @@ export default function SportsHorary() {
             )}
             {eventMethodResult && <EventMethodAudit result={eventMethodResult} />}
             {panchangaResult && <PanchangaArchetypeAudit result={panchangaResult} />}
+            {godAgentResult && <GodAgentFlowAudit result={godAgentResult} />}
             {messages.some(m => m.role === "assistant") && (
               <button
                 onClick={handleListen}
@@ -947,7 +1072,7 @@ export default function SportsHorary() {
         <AIChatBox
           messages={messages}
           onSendMessage={handleSend}
-          isLoading={ask.isPending || askWithChart.isPending || frawleyEvent.isPending || tajikaPrasnaEvent.isPending || panchangaArchetype.isPending}
+          isLoading={ask.isPending || askWithChart.isPending || frawleyEvent.isPending || tajikaPrasnaEvent.isPending || panchangaArchetype.isPending || godAgentFlow.isPending}
           height="520px"
           placeholder="Ask the oracle: who wins tonight?"
           emptyStateMessage="Enter the chart above, then ask who takes the contest."
