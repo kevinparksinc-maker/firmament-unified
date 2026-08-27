@@ -104,6 +104,54 @@ type LayerVoteScorecard = {
   aggregateReason: string;
 };
 
+type SportsMethod = "cluster" | "frawley" | "tajika-prasna";
+
+type EventMethodResult = {
+  version: "frawley-event-v1" | "tajika-prasna-v1";
+  orientation: "standard" | "inverse-180";
+  method: string;
+  status: "ready" | "no-call";
+  outcome: "side-a" | "side-b" | "no-call";
+  verdict: string;
+  reason: string;
+  event: {
+    venueName: string;
+    favoriteName: string;
+    challengerName: string;
+    favoriteSource: string;
+    eventUtcIso: string;
+    houseSystem: string;
+    houseEngine: string;
+    zodiac: string;
+  };
+  cusps: Array<{ house: number; longitude: number; sign: string }>;
+  significators: Array<{
+    role: string;
+    side: "A" | "B";
+    cusp: number;
+    cuspLongitude: number;
+    cuspSign: string;
+    ruler: string;
+    planet: { longitude: number; sign: string; degreeInSign: number; speedDegreesPerDay: number; retrograde: boolean };
+    sharedRoles: string[];
+  }>;
+  moon?: {
+    startLongitude: number;
+    startSign: string;
+    signExitUtcIso: string | null;
+    conjunctionStopUtcIso: string | null;
+    candidates: Array<{ target: string; aspect: number; perfectionUtcIso: string; minutesFromStart: number; targetRoles: string[]; targetSides: string[] }>;
+    finalCandidate: { target: string; aspect: number; perfectionUtcIso: string; minutesFromStart: number; targetRoles: string[]; targetSides: string[] } | null;
+  };
+  sideALink?: { kind: string; first: string; second: string; relation: string; aspect: number; initialOrb: number; perfectionUtcIso: string | null } | null;
+  sideBLink?: { kind: string; first: string; second: string; relation: string; aspect: number; initialOrb: number; perfectionUtcIso: string | null } | null;
+  separations?: Array<{ kind: string; first: string; second: string; reason: string }>;
+  bridges?: Array<{ kind: string; bridge: string; side: "A" | "B"; reason: string }>;
+  kamboola?: Array<{ side: "A" | "B"; moonLink: { kind: string; first: string; second: string } }>;
+  grahaYuddha?: Array<{ first: string; second: string; separation: number; winner: string; loser: string; involvesPrincipalSignificator: boolean }>;
+  conflicts: string[];
+};
+
 function VerdictBanner({
   verdict,
   score,
@@ -228,6 +276,58 @@ function LayerVoteAudit({
   );
 }
 
+function EventMethodAudit({ result }: { result: EventMethodResult }) {
+  const sideName = (side: "A" | "B") => side === "A" ? result.event.favoriteName : result.event.challengerName;
+  const linkLabel = (link: EventMethodResult["sideALink"]) => link
+    ? `${link.kind}: ${link.first} → ${link.second} · ${link.relation} ${link.aspect}° · ${link.initialOrb.toFixed(2)}° orb`
+    : "No qualifying direct completion link";
+
+  return (
+    <section className="mb-5 rounded-lg border border-primary/40 bg-card p-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Separate experimental method</p>
+          <h2 className="mt-1 text-lg font-semibold">{result.method}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{result.reason}</p>
+        </div>
+        <span className="rounded border border-primary/40 bg-primary/10 px-2 py-1 font-mono text-xs text-primary">{result.version}</span>
+      </div>
+
+      <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
+        <div className="rounded bg-muted/50 p-2"><span className="block text-xs text-muted-foreground">Verdict</span><strong>{result.verdict}</strong></div>
+        <div className="rounded bg-muted/50 p-2"><span className="block text-xs text-muted-foreground">Chart</span><strong>{result.event.houseSystem} · {result.event.zodiac}</strong></div>
+        <div className="rounded bg-muted/50 p-2"><span className="block text-xs text-muted-foreground">Event UTC</span><strong className="font-mono text-xs">{result.event.eventUtcIso}</strong></div>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">Venue: {result.event.venueName} · Favorite source: {result.event.favoriteSource} · House engine: {result.event.houseEngine}</p>
+
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full min-w-[720px] text-left text-xs">
+          <thead className="border-b border-border text-muted-foreground"><tr><th className="pb-2 pr-3">Role</th><th className="pb-2 pr-3">Team side</th><th className="pb-2 pr-3">Cusp</th><th className="pb-2 pr-3">Ruler</th><th className="pb-2 pr-3">Planet longitude</th><th className="pb-2">Motion</th></tr></thead>
+          <tbody>{result.significators.map(row => <tr key={row.role} className="border-b border-border/60 last:border-0"><td className="py-2 pr-3 font-semibold">{row.role}</td><td className="py-2 pr-3">{sideName(row.side)}</td><td className="py-2 pr-3">H{row.cusp} · {row.cuspSign} {row.cuspLongitude.toFixed(2)}°</td><td className="py-2 pr-3">{row.ruler}{row.sharedRoles.length > 1 ? ` · shared ${row.sharedRoles.join("/")}` : ""}</td><td className="py-2 pr-3 font-mono">{row.planet.sign} {row.planet.degreeInSign.toFixed(2)}°</td><td className="py-2">{row.planet.speedDegreesPerDay.toFixed(3)}°/day {row.planet.retrograde ? "Rx" : "direct"}</td></tr>)}</tbody>
+        </table>
+      </div>
+
+      {result.moon ? (
+        <div className="mt-4 rounded border border-border bg-muted/20 p-3 text-sm">
+          <strong>Frawley Moon completion</strong>
+          <p className="mt-1 text-muted-foreground">Moon begins at {result.moon.startSign} {result.moon.startLongitude.toFixed(2)}°. {result.moon.finalCandidate ? `Final qualifying aspect: ${result.moon.finalCandidate.aspect}° to ${result.moon.finalCandidate.target} in ${result.moon.finalCandidate.minutesFromStart.toFixed(1)} minutes.` : "No qualifying final aspect before sign exit."}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Candidates: {result.moon.candidates.length} · Moon sign exit: {result.moon.signExitUtcIso ?? "not found"} · Conjunction stop: {result.moon.conjunctionStopUtcIso ?? "none"}</p>
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 text-sm">
+          <div className="rounded border border-border bg-muted/20 p-3"><strong>Side A completion link</strong><p className="mt-1 text-muted-foreground">{linkLabel(result.sideALink)}</p></div>
+          <div className="rounded border border-border bg-muted/20 p-3"><strong>Side B completion link</strong><p className="mt-1 text-muted-foreground">{linkLabel(result.sideBLink)}</p></div>
+          <div className="rounded border border-border bg-muted/20 p-3"><strong>Separations</strong><p className="mt-1 text-muted-foreground">{result.separations?.length ?? 0} Eesaphala/Musaripha records.</p></div>
+          <div className="rounded border border-border bg-muted/20 p-3"><strong>Supporting yogas</strong><p className="mt-1 text-muted-foreground">{result.bridges?.length ?? 0} bridge(s), {result.kamboola?.length ?? 0} Kamboola catalyst(s), {result.grahaYuddha?.length ?? 0} Graha Yuddha record(s).</p></div>
+        </div>
+      )}
+
+      {result.conflicts.length > 0 && <p className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-200"><strong>Conflict / no-call evidence:</strong> {result.conflicts.join(" ")}</p>}
+      <details className="mt-4 text-xs"><summary className="cursor-pointer font-semibold text-primary">Show all 12 raw Placidus cusps</summary><div className="mt-2 grid grid-cols-2 gap-1 sm:grid-cols-4">{result.cusps.map(cusp => <span key={cusp.house} className="rounded bg-muted/50 px-2 py-1">H{cusp.house}: {cusp.sign} {cusp.longitude.toFixed(2)}°</span>)}</div></details>
+    </section>
+  );
+}
+
 export default function SportsHorary() {
   const [favorite, setFavorite] = useState("");
   const [challenger, setChallenger] = useState("");
@@ -235,6 +335,11 @@ export default function SportsHorary() {
   const [eventHour, setEventHour] = useState("");
   const [eventMinute, setEventMinute] = useState("");
   const [selectedCity, setSelectedCity] = useState("New York");
+  const [sportsMethod, setSportsMethod] = useState<SportsMethod>("cluster");
+  const [venueName, setVenueName] = useState("");
+  const [venueLatitude, setVenueLatitude] = useState("");
+  const [venueLongitude, setVenueLongitude] = useState("");
+  const [favoriteSource, setFavoriteSource] = useState("");
   const [transitInput, setTransitInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [result, setResult] = useState<{
@@ -245,6 +350,7 @@ export default function SportsHorary() {
     layerVotes?: LayerVoteScorecard;
   } | null>(null);
   const [mapOrientation, setMapOrientation] = useState<"standard" | "inverse-180">("standard");
+  const [eventMethodResult, setEventMethodResult] = useState<EventMethodResult | null>(null);
   const [isSpeakingAnswer, setIsSpeakingAnswer] = useState(false);
   const [calculatedChart, setCalculatedChart] = useState<any>(null);
 
@@ -307,6 +413,22 @@ export default function SportsHorary() {
         { role: "assistant", content: `The sky is clouded: ${err.message}` },
       ]);
     },
+  });
+
+  const handleEventMethodSuccess = (data: { answer: string; result: EventMethodResult }) => {
+    setMessages(prev => [...prev, { role: "assistant", content: data.answer }]);
+    setEventMethodResult(data.result);
+    setResult(null);
+  };
+
+  const frawleyEvent = trpc.sportsHorary.frawleyEvent.useMutation({
+    onSuccess: data => handleEventMethodSuccess(data as { answer: string; result: EventMethodResult }),
+    onError: err => setMessages(prev => [...prev, { role: "assistant", content: `Frawley event chart could not run: ${err.message}` }]),
+  });
+
+  const tajikaPrasnaEvent = trpc.sportsHorary.tajikaPrasnaEvent.useMutation({
+    onSuccess: data => handleEventMethodSuccess(data as { answer: string; result: EventMethodResult }),
+    onError: err => setMessages(prev => [...prev, { role: "assistant", content: `Tajika/Prasna event chart could not run: ${err.message}` }]),
   });
 
   const handleCalculateChart = () => {
@@ -378,55 +500,75 @@ export default function SportsHorary() {
     }
   };
 
+  const buildStrictEventRecord = () => {
+    const dateMatch = eventDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const year = dateMatch ? Number(dateMatch[1]) : Number.NaN;
+    const month = dateMatch ? Number(dateMatch[2]) : Number.NaN;
+    const day = dateMatch ? Number(dateMatch[3]) : Number.NaN;
+    const hour = Number(eventHour);
+    const minute = Number(eventMinute);
+    const latitude = Number(venueLatitude);
+    const longitude = Number(venueLongitude);
+    const invalid = !eventHour.trim() || !eventMinute.trim() || !venueLatitude.trim() || !venueLongitude.trim()
+      || !Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)
+      || !Number.isInteger(hour) || hour < 0 || hour > 23
+      || !Number.isInteger(minute) || minute < 0 || minute > 59
+      || !Number.isFinite(latitude) || latitude < -90 || latitude > 90
+      || !Number.isFinite(longitude) || longitude < -180 || longitude > 180
+      || !favorite.trim() || !challenger.trim() || !venueName.trim() || favoriteSource.trim().length < 3;
+    if (invalid) return null;
+    return { year, month, day, hour, minute, latitude, longitude, venueName: venueName.trim(), favoriteName: favorite.trim(), challengerName: challenger.trim(), favoriteSource: favoriteSource.trim(), mapOrientation };
+  };
+
   const handleSend = (content: string) => {
-    if (transitInput.trim().length < 10) {
-      setMessages(prev => [
-        ...prev,
-        { role: "user", content },
-        {
+    const next: Message[] = [...messages, { role: "user", content }];
+    if (sportsMethod !== "cluster") {
+      const eventRecord = buildStrictEventRecord();
+      if (!eventRecord) {
+        setMessages([...next, {
           role: "assistant",
-          content:
-            "I need the event-chart placements first — paste the sky at game time in the box above, then ask.",
-        },
-      ]);
+          content: "This method needs the exact local event date and time, both teams, exact venue name and coordinates, plus a saved pregame favorite source. It will not substitute noon or a city-center location.",
+        }]);
+        return;
+      }
+      setMessages(next);
+      setResult(null);
+      setEventMethodResult(null);
+      const request = { question: content, ...eventRecord };
+      if (sportsMethod === "frawley") frawleyEvent.mutate(request);
+      else tajikaPrasnaEvent.mutate(request);
       return;
     }
-    const next: Message[] = [...messages, { role: "user", content }];
-    setMessages(next);
 
-    // If we have a calculated chart, use the full territorial control analysis
+    if (transitInput.trim().length < 10) {
+      setMessages([...next, {
+        role: "assistant",
+        content: "I need the event-chart placements first — paste the sky at game time in the box above, then ask.",
+      }]);
+      return;
+    }
+    setMessages(next);
+    setEventMethodResult(null);
     if (calculatedChart && calculatedChart.planets && calculatedChart.houses?.cusps) {
       askWithChart.mutate({
         question: content,
         planets: calculatedChart.planets.map((p: any) => {
-          const degree = typeof p.degree === 'number' ? p.degree : (typeof p.degreeInSign === 'number' ? p.degreeInSign : 0);
-          return {
-            planet: p.name,
-            degree: degree,
-            sign: p.sign,
-            house: p.house || null,
-            rx: p.retrograde || false,
-            absolute: p.eclipticLon || null,
-          };
+          const degree = typeof p.degree === "number" ? p.degree : (typeof p.degreeInSign === "number" ? p.degreeInSign : 0);
+          return { planet: p.name, degree, sign: p.sign, house: p.house || null, rx: p.retrograde || false, absolute: p.eclipticLon || null };
         }),
         houseCusps: calculatedChart.houses.cusps,
         favoriteName: favorite || undefined,
         challengerName: challenger || undefined,
         mapOrientation,
-        history: messages
-          .filter(m => m.role !== "system")
-          .map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
+        history: messages.filter(m => m.role !== "system").map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
       });
     } else {
-      // Fall back to text-based analysis
       ask.mutate({
         question: content,
         transitPlacements: transitInput,
         favoriteName: favorite || undefined,
         challengerName: challenger || undefined,
-        history: messages
-          .filter(m => m.role !== "system")
-          .map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
+        history: messages.filter(m => m.role !== "system").map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
       });
     }
   };
@@ -462,14 +604,34 @@ export default function SportsHorary() {
           <div style={{ width: "120px" }} />
         </div>
         <p className="text-sm opacity-70 text-center mb-6">
-          Ascendant (H1) = Favorite · Descendant (H7) = Challenger. The engine
-          scores the chart; the oracle explains the call.
+          Choose a separately auditable event-chart method. No method is blended into another.
         </p>
+
+        <Tabs value={sportsMethod} onValueChange={value => {
+          setSportsMethod(value as SportsMethod);
+          setResult(null);
+          setEventMethodResult(null);
+          setMessages([]);
+        }} className="mb-5">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="cluster">Cluster / Layer Vote</TabsTrigger>
+            <TabsTrigger value="frawley">Frawley Event</TabsTrigger>
+            <TabsTrigger value="tajika-prasna">Tajika / Prasna</TabsTrigger>
+          </TabsList>
+          <p className="mt-2 text-xs opacity-65">
+            {sportsMethod === "cluster"
+              ? "Current Cluster/Territorial model: each active layer makes its own choice and eligible choices are counted."
+              : sportsMethod === "frawley"
+                ? "Frawley event chart: real start and exact venue, Placidus houses, four significators, Moon completion, and no blended score."
+                : "Tajika/Prasna event chart: real start and exact venue, Placidus houses, signed motion, direct completion yogas, and no blended score."}
+          </p>
+        </Tabs>
 
         <Tabs value={mapOrientation} onValueChange={value => {
           const next = value as "standard" | "inverse-180";
           setMapOrientation(next);
           setResult(null);
+          setEventMethodResult(null);
           setMessages([]);
         }} className="mb-5">
           <TabsList className="grid w-full grid-cols-2">
@@ -497,6 +659,20 @@ export default function SportsHorary() {
             className="rounded-lg border-2 border-border bg-card p-2 text-sm"
           />
         </div>
+
+        {sportsMethod !== "cluster" && (
+          <section className="mb-4 rounded-lg border border-primary/40 bg-primary/5 p-3">
+            <h2 className="text-sm font-semibold">Verified event record required</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Frawley and Tajika/Prasna will not use a default time or city center. Enter the scheduled local venue time, the exact stadium coordinates, and the pregame source that identified the favorite.</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <input value={venueName} onChange={event => setVenueName(event.target.value)} placeholder="Exact venue name" className="rounded-lg border-2 border-border bg-card p-2 text-sm sm:col-span-3" />
+              <input type="number" step="any" value={venueLatitude} onChange={event => setVenueLatitude(event.target.value)} placeholder="Venue latitude" className="rounded-lg border-2 border-border bg-card p-2 text-sm" />
+              <input type="number" step="any" value={venueLongitude} onChange={event => setVenueLongitude(event.target.value)} placeholder="Venue longitude" className="rounded-lg border-2 border-border bg-card p-2 text-sm" />
+              <span className="rounded-lg border-2 border-dashed border-border p-2 text-xs text-muted-foreground">Both coordinates must be for the stadium, not the city center.</span>
+            </div>
+            <textarea value={favoriteSource} onChange={event => setFavoriteSource(event.target.value)} placeholder="Pregame favorite source, line, and capture note" className="mt-3 min-h-20 w-full rounded-lg border-2 border-border bg-card p-2 text-sm" />
+          </section>
+        )}
 
         <div className="grid grid-cols-4 gap-3 mb-3">
           <input
@@ -537,15 +713,16 @@ export default function SportsHorary() {
           </select>
         </div>
 
-        <button
-          onClick={handleCalculateChart}
-          disabled={calculateChart.isPending || !eventDate}
-          className="w-full mb-4 rounded-lg bg-primary text-primary-foreground p-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
-        >
-          {calculateChart.isPending ? "Calculating..." : "✦ Calculate Event Chart ✦"}
-        </button>
+        {sportsMethod === "cluster" ? <>
+          <button
+            onClick={handleCalculateChart}
+            disabled={calculateChart.isPending || !eventDate}
+            className="w-full mb-4 rounded-lg bg-primary text-primary-foreground p-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
+          >
+            {calculateChart.isPending ? "Calculating..." : "✦ Calculate Event Chart ✦"}
+          </button>
 
-        <textarea
+          <textarea
           value={transitInput}
           onChange={e => setTransitInput(e.target.value)}
           placeholder={TRANSIT_PLACEHOLDER}
@@ -563,28 +740,30 @@ export default function SportsHorary() {
             marginBottom: "16px",
             resize: "vertical",
           }}
-        />
+          />
+        </> : <p className="mb-4 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">The selected method calculates its own named Placidus event chart when you submit a question. The manual Cluster/Territorial placement box is intentionally excluded.</p>}
 
-        {result && (
+        {(result || eventMethodResult) && (
           <>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
-              {result.mapOrientation === "inverse-180" ? "180° inverse-map comparison result" : "Standard-map result"}
+              {(result?.mapOrientation ?? eventMethodResult?.orientation) === "inverse-180" ? "180° inverse-map comparison result" : "Standard-map result"}
             </p>
-            <VerdictBanner
+            {result && <VerdictBanner
               verdict={result.verdict}
               score={result.score}
               flags={result.flags}
               favorite={favorite}
               challenger={challenger}
               layerVotes={result.layerVotes}
-            />
-            {result.layerVotes && (
+            />}
+            {result?.layerVotes && (
               <LayerVoteAudit
                 scorecard={result.layerVotes}
                 favorite={favorite}
                 challenger={challenger}
               />
             )}
+            {eventMethodResult && <EventMethodAudit result={eventMethodResult} />}
             {messages.some(m => m.role === "assistant") && (
               <button
                 onClick={handleListen}
@@ -609,7 +788,7 @@ export default function SportsHorary() {
         <AIChatBox
           messages={messages}
           onSendMessage={handleSend}
-          isLoading={ask.isPending || askWithChart.isPending}
+          isLoading={ask.isPending || askWithChart.isPending || frawleyEvent.isPending || tajikaPrasnaEvent.isPending}
           height="520px"
           placeholder="Ask the oracle: who wins tonight?"
           emptyStateMessage="Enter the chart above, then ask who takes the contest."

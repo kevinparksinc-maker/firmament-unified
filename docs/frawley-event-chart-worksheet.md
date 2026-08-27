@@ -148,6 +148,12 @@ For every output, retain a **frozen event record**, full four-significator table
 | No-mixing guard | Cluster, Atlas, KP, Tajika, and inverse-180 outputs cannot supply the Frawley verdict function |
 | Historical holdout | Standard Frawley event results are time-split, pre-registered, and reported separately from current cluster results |
 
+## Active v1 Boundary
+
+The first activated implementation uses the stated real event time and venue, a separate named Placidus cusp service, traditional four-significator mapping, the 3°/5° angular evidence bands, a live Moon future-perfection search up to sign exit, and a no-call decision when the final qualified Moon target is absent, shared, or conflicted. It retains the raw cusp and planet evidence in its result record.
+
+The first release shows combustion at the source outline’s ≤2° review threshold as **supporting evidence only**. Nodes and Part of Fortune are explicitly displayed as not configured and cannot alter the verdict until their source-locked thresholds and formula are separately added. No cluster, KP, Tajika/Prasna, Atlas, seed, or inverse-map output is allowed into the standard Frawley verdict.
+
 ## Implementation Order
 
 1. **Input record and no-call gate.** Build the immutable pre-game record and event audit before any verdict.

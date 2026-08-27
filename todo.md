@@ -132,3 +132,9 @@
 - [ ] Record and evaluate per-layer picks, weighted aggregate picks, abstentions, and opposite-orientation agreement separately on frozen historical events before recalibrating any layer weights.
 - [x] Verify the exact Colorado Rockies versus Minnesota Twins upset game with frozen pregame favorite, scheduled local start, venue coordinates, timezone, and final result before a layer-vote replay.
 - [x] Run and document separate standard and inverse-180 Colorado–Twins layer-vote scorecards, then inspect home/favorite bias without changing any weights after the result is known.
+- [x] Activate the documented no-seed Frawley event-chart method as a separately selectable sports ruleset using the real game start and venue chart.
+- [x] Implement Frawley H1/H4 versus H7/H10 significators, cusp condition, Moon-next-aspect, affliction evidence, conflicts, and no-call logic as an auditable scorecard without blending it into the Cluster/Territorial points.
+- [x] Add focused Frawley calculation regressions plus visible Sports Horary method selection and result evidence, then validate the standard and inverse comparison behavior separately.
+- [x] Define and activate a separately selectable Prasna/Tajika event-chart ruleset using the real game start and venue, with source-locked terminology and no seed-based KP inputs.
+- [x] Implement Prasna/Tajika evidence, conflicts, and no-call result handling without blending it into Cluster/Territorial, Frawley, Atlas, or the inverse-180 comparison.
+- [x] Add a visible Prasna/Tajika scorecard and focused regression coverage before evaluating it on a frozen historical holdout.
