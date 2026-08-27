@@ -104,3 +104,10 @@
 - [x] Detect auditable named geometric configurations, beginning with Grand Trines, T-Squares, Grand Crosses, Yods, and Kites.
 - [x] Surface all aspect/configuration evidence in Atlas Audit Mode, selected-point detail, and Atlas Scholar context without inventing missing configurations.
 - [x] Add deterministic aspect/configuration tests, validate the Atlas route, and deliver the isolated feature-branch update.
+- [x] Trace the active sports Ascendant-family and Descendant-family house calculations through chart generation, team-side assignment, scoring, and inverse comparison.
+- [x] Compare the active sports house-family behavior with the pre-Atlas sports implementation and document any deliberate distinction from the Atlas direct Equal-House model.
+- [x] Add focused regression coverage or explicit sports convention labels if the audit finds house-family drift, then report the evidence before further prediction work; none was required because no drift was found.
+- [x] Inventory every active sports input, calculation layer, team-side convention, inverse-map convention, and current limitation before treating output as a useful contest call.
+- [x] Define a reproducible historical backtest and holdout protocol using pre-game inputs and verified game results, with accuracy, calibration, coverage, and abstention metrics.
+- [ ] Add sports input provenance, completeness gates, and uncertainty/abstention safeguards so missing or mixed chart data cannot produce a confident-looking call.
+- [ ] Evaluate any scoring calibration only on historical training data, then report holdout performance and limitations without presenting the system as a guaranteed predictor.
