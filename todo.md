@@ -141,3 +141,8 @@
 - [x] Define an isolated Panchanga and user-documented team-archetype contract, including real venue-local Vara, Sun/Moon-derived tithi, a declared nakshatra coordinate convention, karana and yoga tables, profile evidence sources, effective dates, and stale/missing-profile no-call rules.
 - [x] Implement the Panchanga / Team Archetype engine using live event astronomy with no placeholders, no seed-based input, no confidence percentage, no betting recommendation, and no Cluster/Frawley/Tajika/KP/Atlas blending.
 - [x] Add a selectable Sports Horary method tab with strict team-profile evidence input, per-team compatibility audit, and focused tests for calculation and missing-profile abstention behavior.
+- [x] Generate the user’s live, auditable Gleason/Zetetic natal placement table from the isolated Atlas path, including input provenance, tropical longitudes, direct angles, and Equal House assignments.
+- [x] Render the user’s live Atlas natal placements on the isolated azimuthal-equidistant Gleason map projection, with the projection and zodiac/house coordinate roles clearly separated.
+- [x] Calculate the user’s live Atlas tropical 27-lunar-mansion chain for every planet, node, and angle, including mansion lord, declared Vimshottari sub/sub-sub lord, sign lord, Equal House, and an auditable lord-occurrence count.
+- [x] Define a versioned God View rule that maps frozen RA/declination sectors to Side A and Side B with predeclared team assignment, point eligibility, no-call rules, separate inverse audit, and frozen-event validation requirements.
+- [x] Revise the God View contract so it evaluates only fixed Ascendant-pole versus Descendant-pole geometry; team names and sports sides must enter only through a separate Agent View translation layer.
