@@ -104,7 +104,19 @@ type LayerVoteScorecard = {
   aggregateReason: string;
 };
 
-type SportsMethod = "cluster" | "frawley" | "tajika-prasna";
+type SportsMethod = "cluster" | "frawley" | "tajika-prasna" | "panchanga";
+type Archetype = "warrior" | "intellectual" | "merchant" | "laborer";
+
+type ArchetypeProfileInput = {
+  teamName: string;
+  primaryArchetype: Archetype;
+  secondaryArchetype?: Archetype;
+  studyWindow: string;
+  evidenceNote: string;
+  sources: string;
+  effectiveDate: string;
+  validThroughDate: string;
+};
 
 type EventMethodResult = {
   version: "frawley-event-v1" | "tajika-prasna-v1";
@@ -150,6 +162,40 @@ type EventMethodResult = {
   kamboola?: Array<{ side: "A" | "B"; moonLink: { kind: string; first: string; second: string } }>;
   grahaYuddha?: Array<{ first: string; second: string; separation: number; winner: string; loser: string; involvesPrincipalSignificator: boolean }>;
   conflicts: string[];
+};
+
+type PanchangaArchetypeResult = {
+  version: "panchanga-archetype-v1";
+  method: "Panchanga / Team Archetype";
+  orientation: "event-instant";
+  status: "ready" | "no-call";
+  outcome: "side-a" | "side-b" | "no-call";
+  verdict: string;
+  reason: string;
+  event: { venueName: string; latitude: number; longitude: number; timezone: string; eventUtcIso: string; localEventDate: string; favoriteName: string; challengerName: string; favoriteSource: string };
+  panchanga: {
+    coordinateConvention: string;
+    sunriseUtcIso: string | null;
+    vara: { day: string; ruler: string } | null;
+    sunLongitude: number;
+    moonLongitude: number;
+    elongation: number;
+    tithi: { number: number; name: string; paksha: "Shukla" | "Krishna" };
+    nakshatra: { number: number; name: string; progressPercent: number; status: string };
+    karana: { index: number; name: string; class: string };
+    yoga: { number: number; name: string; progressPercent: number };
+    publicPsychology: string;
+  };
+  profiles: Array<{
+    side: "A" | "B";
+    teamName: string;
+    profile: Omit<ArchetypeProfileInput, "sources"> & { sources: string[] };
+    validation: { valid: boolean; reasons: string[] };
+    compatibility: Array<{ archetype: Archetype; primary: boolean; score: number; reasons: string[] }>;
+    total: number | null;
+  }>;
+  scoreDifference: number | null;
+  noCallReasons: string[];
 };
 
 function VerdictBanner({
@@ -328,6 +374,46 @@ function EventMethodAudit({ result }: { result: EventMethodResult }) {
   );
 }
 
+function PanchangaArchetypeAudit({ result }: { result: PanchangaArchetypeResult }) {
+  return (
+    <section className="mb-5 rounded-lg border border-primary/40 bg-card p-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Separate experimental method</p>
+          <h2 className="mt-1 text-lg font-semibold">{result.method}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{result.reason}</p>
+        </div>
+        <span className="rounded border border-primary/40 bg-primary/10 px-2 py-1 font-mono text-xs text-primary">{result.version}</span>
+      </div>
+
+      <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
+        <div className="rounded bg-muted/50 p-2"><span className="block text-xs text-muted-foreground">Verdict</span><strong>{result.verdict}</strong></div>
+        <div className="rounded bg-muted/50 p-2"><span className="block text-xs text-muted-foreground">Event UTC</span><strong className="font-mono text-xs">{result.event.eventUtcIso}</strong></div>
+        <div className="rounded bg-muted/50 p-2"><span className="block text-xs text-muted-foreground">Venue-local date</span><strong>{result.event.localEventDate} · {result.event.timezone}</strong></div>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">Venue: {result.event.venueName} ({result.event.latitude.toFixed(5)}, {result.event.longitude.toFixed(5)}) · Favorite source: {result.event.favoriteSource}</p>
+
+      <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded border border-border bg-muted/20 p-3"><strong>Vara</strong><p className="mt-1 text-muted-foreground">{result.panchanga.vara ? `${result.panchanga.vara.day} · ${result.panchanga.vara.ruler}` : "Unavailable"}</p><p className="mt-1 text-xs text-muted-foreground">Sunrise: {result.panchanga.sunriseUtcIso ?? "not found"}</p></div>
+        <div className="rounded border border-border bg-muted/20 p-3"><strong>Tithi</strong><p className="mt-1 text-muted-foreground">{result.panchanga.tithi.number}. {result.panchanga.tithi.name} · {result.panchanga.tithi.paksha}</p><p className="mt-1 text-xs text-muted-foreground">Moon–Sun elongation: {result.panchanga.elongation.toFixed(3)}°</p></div>
+        <div className="rounded border border-border bg-muted/20 p-3"><strong>Nakshatra</strong><p className="mt-1 text-muted-foreground">{result.panchanga.nakshatra.number}. {result.panchanga.nakshatra.name}</p><p className="mt-1 text-xs text-muted-foreground">{result.panchanga.nakshatra.progressPercent.toFixed(1)}% · {result.panchanga.nakshatra.status.replaceAll("-", " ")}</p></div>
+        <div className="rounded border border-border bg-muted/20 p-3"><strong>Karana</strong><p className="mt-1 text-muted-foreground">{result.panchanga.karana.name} · {result.panchanga.karana.class}</p><p className="mt-1 text-xs text-muted-foreground">Half-tithi index: {result.panchanga.karana.index + 1}</p></div>
+        <div className="rounded border border-border bg-muted/20 p-3"><strong>Nitya Yoga</strong><p className="mt-1 text-muted-foreground">{result.panchanga.yoga.number}. {result.panchanga.yoga.name}</p><p className="mt-1 text-xs text-muted-foreground">{result.panchanga.yoga.progressPercent.toFixed(1)}% through yoga</p></div>
+        <div className="rounded border border-border bg-muted/20 p-3"><strong>Coordinate convention</strong><p className="mt-1 text-muted-foreground">{result.panchanga.coordinateConvention}</p><p className="mt-1 text-xs text-muted-foreground">{result.panchanga.publicPsychology}</p></div>
+      </div>
+
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full min-w-[760px] text-left text-xs">
+          <thead className="border-b border-border text-muted-foreground"><tr><th className="pb-2 pr-3">Team / side</th><th className="pb-2 pr-3">Primary / secondary</th><th className="pb-2 pr-3">Study period</th><th className="pb-2 pr-3">Compatibility evidence</th><th className="pb-2">Total</th></tr></thead>
+          <tbody>{result.profiles.map(row => <tr key={row.side} className="border-b border-border/60 last:border-0 align-top"><td className="py-2 pr-3 font-semibold">{row.teamName}<span className="block font-normal text-muted-foreground">Side {row.side}</span></td><td className="py-2 pr-3">{row.profile.primaryArchetype}{row.profile.secondaryArchetype ? ` / ${row.profile.secondaryArchetype}` : ""}</td><td className="py-2 pr-3">{row.profile.studyWindow}<span className="block text-muted-foreground">{row.profile.effectiveDate} → {row.profile.validThroughDate}</span></td><td className="py-2 pr-3">{row.validation.valid ? row.compatibility.map(item => `${item.archetype}: ${item.score >= 0 ? "+" : ""}${item.score.toFixed(1)} (${item.reasons.join(" ")})`).join(" ") : row.validation.reasons.join(" ")}</td><td className="py-2 font-mono font-semibold">{row.total === null ? "No call" : row.total.toFixed(1)}</td></tr>)}</tbody>
+        </table>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">Score difference: {result.scoreDifference === null ? "unavailable" : `${result.scoreDifference > 0 ? "+" : ""}${result.scoreDifference.toFixed(1)} (Side A − Side B)`}. This is transparent compatibility evidence only, not a calibrated probability.</p>
+      {result.noCallReasons.length > 0 && <p className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-200"><strong>No-call evidence:</strong> {result.noCallReasons.join(" ")}</p>}
+    </section>
+  );
+}
+
 export default function SportsHorary() {
   const [favorite, setFavorite] = useState("");
   const [challenger, setChallenger] = useState("");
@@ -340,6 +426,8 @@ export default function SportsHorary() {
   const [venueLatitude, setVenueLatitude] = useState("");
   const [venueLongitude, setVenueLongitude] = useState("");
   const [favoriteSource, setFavoriteSource] = useState("");
+  const [sideAProfile, setSideAProfile] = useState<ArchetypeProfileInput>({ teamName: "", primaryArchetype: "warrior", studyWindow: "", evidenceNote: "", sources: "", effectiveDate: "", validThroughDate: "" });
+  const [sideBProfile, setSideBProfile] = useState<ArchetypeProfileInput>({ teamName: "", primaryArchetype: "warrior", studyWindow: "", evidenceNote: "", sources: "", effectiveDate: "", validThroughDate: "" });
   const [transitInput, setTransitInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [result, setResult] = useState<{
@@ -351,6 +439,7 @@ export default function SportsHorary() {
   } | null>(null);
   const [mapOrientation, setMapOrientation] = useState<"standard" | "inverse-180">("standard");
   const [eventMethodResult, setEventMethodResult] = useState<EventMethodResult | null>(null);
+  const [panchangaResult, setPanchangaResult] = useState<PanchangaArchetypeResult | null>(null);
   const [isSpeakingAnswer, setIsSpeakingAnswer] = useState(false);
   const [calculatedChart, setCalculatedChart] = useState<any>(null);
 
@@ -431,6 +520,17 @@ export default function SportsHorary() {
     onError: err => setMessages(prev => [...prev, { role: "assistant", content: `Tajika/Prasna event chart could not run: ${err.message}` }]),
   });
 
+  const panchangaArchetype = trpc.sportsHorary.panchangaArchetype.useMutation({
+    onSuccess: data => {
+      const typed = data as { answer: string; result: PanchangaArchetypeResult };
+      setMessages(prev => [...prev, { role: "assistant", content: typed.answer }]);
+      setPanchangaResult(typed.result);
+      setEventMethodResult(null);
+      setResult(null);
+    },
+    onError: err => setMessages(prev => [...prev, { role: "assistant", content: `Panchanga / Team Archetype method could not run: ${err.message}` }]),
+  });
+
   const handleCalculateChart = () => {
     if (!eventDate) {
       setMessages(prev => [
@@ -509,8 +609,11 @@ export default function SportsHorary() {
     const minute = Number(eventMinute);
     const latitude = Number(venueLatitude);
     const longitude = Number(venueLongitude);
+    const calendarDate = new Date(Date.UTC(year, month - 1, day));
+    const validCalendarDate = Number.isInteger(year) && Number.isInteger(month) && Number.isInteger(day)
+      && calendarDate.getUTCFullYear() === year && calendarDate.getUTCMonth() === month - 1 && calendarDate.getUTCDate() === day;
     const invalid = !eventHour.trim() || !eventMinute.trim() || !venueLatitude.trim() || !venueLongitude.trim()
-      || !Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)
+      || !validCalendarDate
       || !Number.isInteger(hour) || hour < 0 || hour > 23
       || !Number.isInteger(minute) || minute < 0 || minute > 59
       || !Number.isFinite(latitude) || latitude < -90 || latitude > 90
@@ -520,23 +623,53 @@ export default function SportsHorary() {
     return { year, month, day, hour, minute, latitude, longitude, venueName: venueName.trim(), favoriteName: favorite.trim(), challengerName: challenger.trim(), favoriteSource: favoriteSource.trim(), mapOrientation };
   };
 
+  const buildPanchangaRequest = () => {
+    const eventRecord = buildStrictEventRecord();
+    const profileInvalid = (profile: ArchetypeProfileInput) => profile.studyWindow.trim().length < 8
+      || profile.evidenceNote.trim().length < 40
+      || profile.sources.split("\n").map(source => source.trim()).filter(Boolean).length === 0
+      || !/^\d{4}-\d{2}-\d{2}$/.test(profile.effectiveDate)
+      || !/^\d{4}-\d{2}-\d{2}$/.test(profile.validThroughDate);
+    if (!eventRecord || profileInvalid(sideAProfile) || profileInvalid(sideBProfile)) return null;
+    const serializeProfile = (profile: ArchetypeProfileInput, teamName: string) => ({
+      teamName,
+      primaryArchetype: profile.primaryArchetype,
+      secondaryArchetype: profile.secondaryArchetype || undefined,
+      studyWindow: profile.studyWindow.trim(),
+      evidenceNote: profile.evidenceNote.trim(),
+      sources: profile.sources.split("\n").map(source => source.trim()).filter(Boolean),
+      effectiveDate: profile.effectiveDate,
+      validThroughDate: profile.validThroughDate,
+    });
+    const { mapOrientation: _ignoredOrientation, ...event } = eventRecord;
+    return {
+      ...event,
+      sideAProfile: serializeProfile(sideAProfile, event.favoriteName),
+      sideBProfile: serializeProfile(sideBProfile, event.challengerName),
+    };
+  };
+
   const handleSend = (content: string) => {
     const next: Message[] = [...messages, { role: "user", content }];
     if (sportsMethod !== "cluster") {
-      const eventRecord = buildStrictEventRecord();
+      const eventRecord = sportsMethod === "panchanga" ? buildPanchangaRequest() : buildStrictEventRecord();
       if (!eventRecord) {
         setMessages([...next, {
           role: "assistant",
-          content: "This method needs the exact local event date and time, both teams, exact venue name and coordinates, plus a saved pregame favorite source. It will not substitute noon or a city-center location.",
+          content: sportsMethod === "panchanga"
+            ? "This method needs the exact event record plus both user-researched team profiles: archetype, study window, evidence note, source, and effective dates. It will not invent a team style or use a missing profile."
+            : "This method needs the exact local event date and time, both teams, exact venue name and coordinates, plus a saved pregame favorite source. It will not substitute noon or a city-center location.",
         }]);
         return;
       }
       setMessages(next);
       setResult(null);
       setEventMethodResult(null);
+      setPanchangaResult(null);
       const request = { question: content, ...eventRecord };
       if (sportsMethod === "frawley") frawleyEvent.mutate(request);
-      else tajikaPrasnaEvent.mutate(request);
+      else if (sportsMethod === "tajika-prasna") tajikaPrasnaEvent.mutate(request);
+      else panchangaArchetype.mutate(request);
       return;
     }
 
@@ -549,6 +682,7 @@ export default function SportsHorary() {
     }
     setMessages(next);
     setEventMethodResult(null);
+    setPanchangaResult(null);
     if (calculatedChart && calculatedChart.planets && calculatedChart.houses?.cusps) {
       askWithChart.mutate({
         question: content,
@@ -611,27 +745,32 @@ export default function SportsHorary() {
           setSportsMethod(value as SportsMethod);
           setResult(null);
           setEventMethodResult(null);
+          setPanchangaResult(null);
           setMessages([]);
         }} className="mb-5">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
             <TabsTrigger value="cluster">Cluster / Layer Vote</TabsTrigger>
             <TabsTrigger value="frawley">Frawley Event</TabsTrigger>
             <TabsTrigger value="tajika-prasna">Tajika / Prasna</TabsTrigger>
+            <TabsTrigger value="panchanga">Panchanga / Archetype</TabsTrigger>
           </TabsList>
           <p className="mt-2 text-xs opacity-65">
             {sportsMethod === "cluster"
               ? "Current Cluster/Territorial model: each active layer makes its own choice and eligible choices are counted."
               : sportsMethod === "frawley"
                 ? "Frawley event chart: real start and exact venue, Placidus houses, four significators, Moon completion, and no blended score."
-                : "Tajika/Prasna event chart: real start and exact venue, Placidus houses, signed motion, direct completion yogas, and no blended score."}
+                : sportsMethod === "tajika-prasna"
+                  ? "Tajika/Prasna event chart: real start and exact venue, Placidus houses, signed motion, direct completion yogas, and no blended score."
+                  : "Panchanga / Team Archetype: real venue time plus user-documented overall team-play profiles. No profile means no call."}
           </p>
         </Tabs>
 
-        <Tabs value={mapOrientation} onValueChange={value => {
+        {sportsMethod !== "panchanga" ? <Tabs value={mapOrientation} onValueChange={value => {
           const next = value as "standard" | "inverse-180";
           setMapOrientation(next);
           setResult(null);
           setEventMethodResult(null);
+          setPanchangaResult(null);
           setMessages([]);
         }} className="mb-5">
           <TabsList className="grid w-full grid-cols-2">
@@ -643,7 +782,7 @@ export default function SportsHorary() {
               ? "Primary event-chart calculation."
               : "Comparison layer: every event-chart longitude and cusp is rotated 180° together. It remains separate from the standard result."}
           </p>
-        </Tabs>
+        </Tabs> : <p className="mb-5 rounded border border-primary/30 bg-primary/5 p-2 text-xs text-muted-foreground">Panchanga is an event-instant method. It has no inverse-180 chart orientation and cannot be pooled with chart methods.</p>}
 
         <div className="grid grid-cols-2 gap-3 mb-3">
           <input
@@ -663,7 +802,7 @@ export default function SportsHorary() {
         {sportsMethod !== "cluster" && (
           <section className="mb-4 rounded-lg border border-primary/40 bg-primary/5 p-3">
             <h2 className="text-sm font-semibold">Verified event record required</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Frawley and Tajika/Prasna will not use a default time or city center. Enter the scheduled local venue time, the exact stadium coordinates, and the pregame source that identified the favorite.</p>
+            <p className="mt-1 text-xs text-muted-foreground">This method will not use a default time or city center. Enter the scheduled local venue time, exact stadium coordinates, and the pregame source that identified the Favorite.</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <input value={venueName} onChange={event => setVenueName(event.target.value)} placeholder="Exact venue name" className="rounded-lg border-2 border-border bg-card p-2 text-sm sm:col-span-3" />
               <input type="number" step="any" value={venueLatitude} onChange={event => setVenueLatitude(event.target.value)} placeholder="Venue latitude" className="rounded-lg border-2 border-border bg-card p-2 text-sm" />
@@ -671,10 +810,29 @@ export default function SportsHorary() {
               <span className="rounded-lg border-2 border-dashed border-border p-2 text-xs text-muted-foreground">Both coordinates must be for the stadium, not the city center.</span>
             </div>
             <textarea value={favoriteSource} onChange={event => setFavoriteSource(event.target.value)} placeholder="Pregame favorite source, line, and capture note" className="mt-3 min-h-20 w-full rounded-lg border-2 border-border bg-card p-2 text-sm" />
+
+            {sportsMethod === "panchanga" && <div className="mt-4 border-t border-primary/20 pt-4">
+              <h3 className="text-sm font-semibold">User-researched overall-play profiles</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Study each team before the event. These entries are frozen into this result; the app will not infer an archetype from a single game or the outcome.</p>
+              {([ ["A", favorite || "Side A / Favorite", sideAProfile, setSideAProfile], ["B", challenger || "Side B / Challenger", sideBProfile, setSideBProfile] ] as const).map(([side, teamName, profile, setProfile]) => (
+                <fieldset key={side} className="mt-3 rounded border border-border bg-card/60 p-3">
+                  <legend className="px-1 text-xs font-semibold">Side {side}: {teamName}</legend>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="text-xs">Primary archetype<select value={profile.primaryArchetype} onChange={event => setProfile(current => ({ ...current, primaryArchetype: event.target.value as Archetype }))} className="mt-1 w-full rounded border border-border bg-background p-2 text-sm"><option value="warrior">Warrior</option><option value="intellectual">Intellectual</option><option value="merchant">Merchant</option><option value="laborer">Laborer</option></select></label>
+                    <label className="text-xs">Optional secondary archetype<select value={profile.secondaryArchetype ?? "none"} onChange={event => setProfile(current => ({ ...current, secondaryArchetype: event.target.value === "none" ? undefined : event.target.value as Archetype }))} className="mt-1 w-full rounded border border-border bg-background p-2 text-sm"><option value="none">None</option><option value="warrior">Warrior</option><option value="intellectual">Intellectual</option><option value="merchant">Merchant</option><option value="laborer">Laborer</option></select></label>
+                    <label className="text-xs">Pregame study window<input value={profile.studyWindow} onChange={event => setProfile(current => ({ ...current, studyWindow: event.target.value }))} placeholder="e.g. Regular season through June 26" className="mt-1 w-full rounded border border-border bg-background p-2 text-sm" /></label>
+                    <label className="text-xs">Profile effective date<input type="date" value={profile.effectiveDate} onChange={event => setProfile(current => ({ ...current, effectiveDate: event.target.value }))} className="mt-1 w-full rounded border border-border bg-background p-2 text-sm" /></label>
+                    <label className="text-xs sm:col-span-2">Valid through date<input type="date" value={profile.validThroughDate} onChange={event => setProfile(current => ({ ...current, validThroughDate: event.target.value }))} className="mt-1 w-full rounded border border-border bg-background p-2 text-sm" /></label>
+                  </div>
+                  <label className="mt-2 block text-xs">Evidence note: overall pregame play only<textarea value={profile.evidenceNote} onChange={event => setProfile(current => ({ ...current, evidenceNote: event.target.value }))} placeholder="Describe the studied team style before this event; do not use the game result." className="mt-1 min-h-20 w-full rounded border border-border bg-background p-2 text-sm" /></label>
+                  <label className="mt-2 block text-xs">Pregame profile sources, one per line<textarea value={profile.sources} onChange={event => setProfile(current => ({ ...current, sources: event.target.value }))} placeholder="https://example.com/pregame-analysis" className="mt-1 min-h-16 w-full rounded border border-border bg-background p-2 text-sm" /></label>
+                </fieldset>
+              ))}
+            </div>}
           </section>
         )}
 
-        <div className="grid grid-cols-4 gap-3 mb-3">
+        <div className={`grid gap-3 mb-3 ${sportsMethod === "cluster" ? "grid-cols-4" : "grid-cols-3"}`}>
           <input
             type="date"
             value={eventDate}
@@ -700,7 +858,7 @@ export default function SportsHorary() {
             max="59"
             className="rounded-lg border-2 border-border bg-card p-2 text-sm"
           />
-          <select
+          {sportsMethod === "cluster" && <select
             value={selectedCity}
             onChange={e => setSelectedCity(e.target.value)}
             className="rounded-lg border-2 border-border bg-card p-2 text-sm"
@@ -710,7 +868,7 @@ export default function SportsHorary() {
                 {city}
               </option>
             ))}
-          </select>
+          </select>}
         </div>
 
         {sportsMethod === "cluster" ? <>
@@ -743,10 +901,10 @@ export default function SportsHorary() {
           />
         </> : <p className="mb-4 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">The selected method calculates its own named Placidus event chart when you submit a question. The manual Cluster/Territorial placement box is intentionally excluded.</p>}
 
-        {(result || eventMethodResult) && (
+        {(result || eventMethodResult || panchangaResult) && (
           <>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
-              {(result?.mapOrientation ?? eventMethodResult?.orientation) === "inverse-180" ? "180° inverse-map comparison result" : "Standard-map result"}
+              {panchangaResult ? "Event-instant method result" : (result?.mapOrientation ?? eventMethodResult?.orientation) === "inverse-180" ? "180° inverse-map comparison result" : "Standard-map result"}
             </p>
             {result && <VerdictBanner
               verdict={result.verdict}
@@ -764,6 +922,7 @@ export default function SportsHorary() {
               />
             )}
             {eventMethodResult && <EventMethodAudit result={eventMethodResult} />}
+            {panchangaResult && <PanchangaArchetypeAudit result={panchangaResult} />}
             {messages.some(m => m.role === "assistant") && (
               <button
                 onClick={handleListen}
@@ -788,7 +947,7 @@ export default function SportsHorary() {
         <AIChatBox
           messages={messages}
           onSendMessage={handleSend}
-          isLoading={ask.isPending || askWithChart.isPending || frawleyEvent.isPending || tajikaPrasnaEvent.isPending}
+          isLoading={ask.isPending || askWithChart.isPending || frawleyEvent.isPending || tajikaPrasnaEvent.isPending || panchangaArchetype.isPending}
           height="520px"
           placeholder="Ask the oracle: who wins tonight?"
           emptyStateMessage="Enter the chart above, then ask who takes the contest."

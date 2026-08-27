@@ -138,3 +138,6 @@
 - [x] Define and activate a separately selectable Prasna/Tajika event-chart ruleset using the real game start and venue, with source-locked terminology and no seed-based KP inputs.
 - [x] Implement Prasna/Tajika evidence, conflicts, and no-call result handling without blending it into Cluster/Territorial, Frawley, Atlas, or the inverse-180 comparison.
 - [x] Add a visible Prasna/Tajika scorecard and focused regression coverage before evaluating it on a frozen historical holdout.
+- [x] Define an isolated Panchanga and user-documented team-archetype contract, including real venue-local Vara, Sun/Moon-derived tithi, a declared nakshatra coordinate convention, karana and yoga tables, profile evidence sources, effective dates, and stale/missing-profile no-call rules.
+- [x] Implement the Panchanga / Team Archetype engine using live event astronomy with no placeholders, no seed-based input, no confidence percentage, no betting recommendation, and no Cluster/Frawley/Tajika/KP/Atlas blending.
+- [x] Add a selectable Sports Horary method tab with strict team-profile evidence input, per-team compatibility audit, and focused tests for calculation and missing-profile abstention behavior.

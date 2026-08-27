@@ -21,6 +21,7 @@ import { sportsHoraryLayer } from "./sportsHoraryReading";
 import { sportsHoraryV2Layer } from "./sportsHoraryV2Reading";
 import { calculateFrawleyEvent } from "./frawleyEventEngine";
 import { calculateTajikaPrasnaEvent } from "./tajikaPrasnaEngine";
+import { ARCHETYPES, calculatePanchangaArchetype } from "./panchangaArchetypeEngine";
 
 import {
   detectFixedStarConjunctions,
@@ -851,6 +852,64 @@ const sportsHoraryRouter = router({
       });
       return {
         answer: `**${result.verdict}**\n\n${result.reason}\n\nThis is a separate Tajika/Prasna event-chart result. It does not use Cluster/Territorial points, KP, Frawley, Atlas, or a blended confidence percentage.`,
+        result,
+      };
+    }),
+  panchangaArchetype: publicProcedure
+    .input(
+      z.object({
+        question: z.string().min(1).max(2000),
+        year: z.number().int().min(1900).max(2100),
+        month: z.number().int().min(1).max(12),
+        day: z.number().int().min(1).max(31),
+        hour: z.number().int().min(0).max(23),
+        minute: z.number().int().min(0).max(59),
+        venueName: z.string().trim().min(2).max(160),
+        latitude: z.number().finite().min(-90).max(90),
+        longitude: z.number().finite().min(-180).max(180),
+        favoriteName: z.string().trim().min(1).max(160),
+        challengerName: z.string().trim().min(1).max(160),
+        favoriteSource: z.string().trim().min(3).max(600),
+        sideAProfile: z.object({
+          teamName: z.string().trim().min(1).max(160),
+          primaryArchetype: z.enum(ARCHETYPES),
+          secondaryArchetype: z.enum(ARCHETYPES).optional(),
+          studyWindow: z.string().trim().min(8).max(500),
+          evidenceNote: z.string().trim().min(40).max(4000),
+          sources: z.array(z.string().trim().min(3).max(800)).min(1).max(8),
+          effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          validThroughDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        }),
+        sideBProfile: z.object({
+          teamName: z.string().trim().min(1).max(160),
+          primaryArchetype: z.enum(ARCHETYPES),
+          secondaryArchetype: z.enum(ARCHETYPES).optional(),
+          studyWindow: z.string().trim().min(8).max(500),
+          evidenceNote: z.string().trim().min(40).max(4000),
+          sources: z.array(z.string().trim().min(3).max(800)).min(1).max(8),
+          effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          validThroughDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        }),
+      })
+    )
+    .mutation(({ input }) => {
+      const timezone = tzLookup(input.latitude, input.longitude);
+      const localTime = `${input.year}-${String(input.month).padStart(2, "0")}-${String(input.day).padStart(2, "0")} ${String(input.hour).padStart(2, "0")}:${String(input.minute).padStart(2, "0")}:00`;
+      const result = calculatePanchangaArchetype({
+        local: { year: input.year, month: input.month, day: input.day, hour: input.hour, minute: input.minute },
+        utcDate: fromZonedTime(localTime, timezone),
+        latitude: input.latitude,
+        longitude: input.longitude,
+        timezone,
+        venueName: input.venueName,
+        favoriteName: input.favoriteName,
+        challengerName: input.challengerName,
+        favoriteSource: input.favoriteSource,
+        sideAProfile: input.sideAProfile,
+        sideBProfile: input.sideBProfile,
+      });
+      return {
+        answer: `**${result.verdict}**\n\n${result.reason}\n\nThis is a separate Panchanga / Team Archetype result using user-documented profiles. It does not use Cluster/Territorial points, Frawley, Tajika/Prasna, KP, Atlas, confidence percentages, or betting recommendations.`,
         result,
       };
     }),
