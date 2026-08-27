@@ -121,3 +121,5 @@
 - [x] Define a separate Frawley-first sports method from real game start and venue inputs, with explicit house, team-assignment, four-significator, cusp, Moon, and affliction evidence.
 - [x] Exclude unclear Gamblers Dharma rules from active scoring unless the user supplies a source with complete, reproducible calculations and separate validation criteria; no active module was added.
 - [x] Produce a source-backed Frawley event-chart worksheet specification with real event inputs, a named quadrant house calculation, H1/H4/H7/H10 significators, cusp evidence, Moon timing, declared afflictions, and conflict/no-call states.
+- [x] Reconstruct the requested Seattle event from verified game identity, scheduled start, venue, timezone, and team-side mapping before running the experimental sports model.
+- [x] Rerun the current standard and inverse-180 sports paths with the same saved chart input and report all layer contributions, orientation labels, and experimental limitations.
