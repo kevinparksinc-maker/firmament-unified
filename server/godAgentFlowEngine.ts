@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import {
   calculatePlacidusEventChart,
   normalizeDegrees,
+  shortestArc,
   type EventChartRequest,
   type TraditionalPlanetName,
 } from "./eventChartService";
@@ -77,6 +78,21 @@ export type GodAgentMatrixRow = GodAxisPoint & {
   flowCell: "asc-to-asc" | "asc-to-dsc" | "dsc-to-asc" | "dsc-to-dsc" | "neutral-to-asc" | "neutral-to-dsc";
 };
 
+type MajorAspectName = "conjunction" | "sextile" | "square" | "trine" | "opposition";
+
+export type GodAgentSecondaryAspect = {
+  first: TraditionalPlanetName;
+  second: TraditionalPlanetName;
+  type: MajorAspectName;
+  exactAngle: number;
+  separation: number;
+  orb: number;
+  firstGodSector: GodSector;
+  secondGodSector: GodSector;
+  firstAgentFamily: AgentFamily;
+  secondAgentFamily: AgentFamily;
+};
+
 export type GodAgentFlowInput = EventChartRequest & {
   venueName: string;
   favoriteName: string;
@@ -115,6 +131,12 @@ export type GodAgentFlowResult = {
     version: typeof GOD_AGENT_FAMILY_FLOW_VERSION;
     rows: GodAgentMatrixRow[];
     cells: Record<GodAgentMatrixRow["flowCell"], number>;
+    note: string;
+  };
+  secondaryGeometry: {
+    status: "unscored context";
+    majorAspectOrb: 5;
+    aspects: GodAgentSecondaryAspect[];
     note: string;
   };
   synthesis: {
@@ -241,6 +263,45 @@ function flowCell(sector: GodSector, family: AgentFamily): GodAgentMatrixRow["fl
   return family === "agent-asc-family" ? "neutral-to-asc" : "neutral-to-dsc";
 }
 
+const MAJOR_ASPECTS: Array<{ type: MajorAspectName; exactAngle: number }> = [
+  { type: "conjunction", exactAngle: 0 },
+  { type: "sextile", exactAngle: 60 },
+  { type: "square", exactAngle: 90 },
+  { type: "trine", exactAngle: 120 },
+  { type: "opposition", exactAngle: 180 },
+];
+
+function detectSecondaryAspects(rows: GodAgentMatrixRow[], agentLongitudes: Map<TraditionalPlanetName, number>): GodAgentSecondaryAspect[] {
+  const aspects: GodAgentSecondaryAspect[] = [];
+  for (let firstIndex = 0; firstIndex < rows.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < rows.length; secondIndex += 1) {
+      const first = rows[firstIndex]!;
+      const second = rows[secondIndex]!;
+      const firstLongitude = agentLongitudes.get(first.planet);
+      const secondLongitude = agentLongitudes.get(second.planet);
+      if (firstLongitude === undefined || secondLongitude === undefined) continue;
+      const separation = shortestArc(firstLongitude, secondLongitude);
+      const closest = MAJOR_ASPECTS
+        .map(aspect => ({ ...aspect, orb: Math.abs(separation - aspect.exactAngle) }))
+        .sort((left, right) => left.orb - right.orb)[0];
+      if (!closest || closest.orb > 5) continue;
+      aspects.push({
+        first: first.planet,
+        second: second.planet,
+        type: closest.type,
+        exactAngle: closest.exactAngle,
+        separation,
+        orb: closest.orb,
+        firstGodSector: first.sector,
+        secondGodSector: second.sector,
+        firstAgentFamily: first.agentFamily,
+        secondAgentFamily: second.agentFamily,
+      });
+    }
+  }
+  return aspects;
+}
+
 function agentPolarityFromCounts(asc: number, dsc: number): Exclude<GodPolarity, "abstain"> {
   if (asc > dsc) return "asc";
   if (dsc > asc) return "dsc";
@@ -287,6 +348,7 @@ export function calculateGodAgentFamilyFlow(input: GodAgentFlowInput): GodAgentF
     "neutral-to-asc": rows.filter(row => row.flowCell === "neutral-to-asc").length,
     "neutral-to-dsc": rows.filter(row => row.flowCell === "neutral-to-dsc").length,
   };
+  const secondaryAspects = detectSecondaryAspects(rows, new Map(agentChart.planets.map(planet => [planet.name, planet.longitude])));
   const synthesis = synthesisFor(godView, agentPolarity, agentStrength);
   const conflicts: string[] = [];
   if (godView.polarity === "tie" || godView.polarity === "abstain") conflicts.push("God View has no directional polarity; it remains a no-call input to synthesis.");
@@ -335,6 +397,12 @@ export function calculateGodAgentFamilyFlow(input: GodAgentFlowInput): GodAgentF
       rows,
       cells,
       note: "Rows show God fixed-sector classification and the independently calculated local Agent receiving family. Cell counts are audit evidence, not a pooled predictive score.",
+    },
+    secondaryGeometry: {
+      status: "unscored context",
+      majorAspectOrb: 5,
+      aspects: secondaryAspects,
+      note: "Major traditional-planet aspects are displayed only as secondary geometry. They do not change God-axis counts, Agent-family counts, synthesis state, strength labels, or the public outcome.",
     },
     synthesis,
     conflicts,

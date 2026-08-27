@@ -52,6 +52,9 @@ describe("god-agent-family-flow-v1", () => {
   it("keeps the frozen Colorado–Twins record at a neutral no-call when God ties and Agent favors DSC", () => {
     const result = calculateGodAgentFamilyFlow(COLORADO_TWINS);
 
+    expect(result.secondaryGeometry.status).toBe("unscored context");
+    expect(result.secondaryGeometry.aspects.every(aspect => aspect.orb <= result.secondaryGeometry.majorAspectOrb)).toBe(true);
+    expect(result.secondaryGeometry.note).toMatch(/do not change/i);
     expect(result.godView.polarity).toBe("tie");
     expect(result.agentView.polarity).toBe("dsc");
     expect(result.synthesis.state).toBe("neutral");

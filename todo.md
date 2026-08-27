@@ -149,3 +149,4 @@
 - [x] Define the God–Agent Synastry / Family Flow Matrix as a separate bidirectional overlay: God placements into local Agent house families and Agent placements into frozen God polarity sectors, with aspects as visible secondary context.
 - [x] Implement direction-first God/Agent/Synthesis states—ASC polarity, DSC polarity, tie, abstain, or cross-view conflict—with any magnitude reported only after the directional state and never used to force an outcome.
 - [x] Run the standalone God-axis and God–Agent Family Flow Matrix on frozen historical event inputs, preserving standard and inverse records separately and never selecting an orientation after the outcome.
+- [x] Add visible secondary God–Agent aspect geometry for the seven traditional planets as unscored audit context only, then rerun the frozen historical replay without changing the God/Agent/Synthesis directional rule.

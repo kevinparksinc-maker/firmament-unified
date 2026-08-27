@@ -239,6 +239,12 @@ type GodAgentFlowResult = {
     cells: Record<string, number>;
     note: string;
   };
+  secondaryGeometry: {
+    status: "unscored context";
+    majorAspectOrb: number;
+    aspects: Array<{ first: string; second: string; type: string; exactAngle: number; separation: number; orb: number; firstGodSector: string; secondGodSector: string; firstAgentFamily: string; secondAgentFamily: string }>;
+    note: string;
+  };
   synthesis: {
     state: "asc-convergence" | "dsc-convergence" | "cross-view-conflict" | "neutral";
     agreementCount: number;
@@ -509,6 +515,14 @@ function GodAgentFlowAudit({ result }: { result: GodAgentFlowResult }) {
         {Object.entries(result.familyFlow.cells).map(([cell, count]) => <div key={cell} className="rounded border border-border bg-muted/20 p-2"><span className="block text-muted-foreground">{cell.replaceAll("-", " → ")}</span><strong className="text-sm">{count}</strong></div>)}
       </div>
       <p className="mt-3 text-xs text-muted-foreground">{result.familyFlow.note}</p>
+      <div className="mt-4 rounded border border-border bg-muted/20 p-3">
+        <div className="flex items-start justify-between gap-2 flex-wrap">
+          <div><strong className="text-sm">Secondary aspect geometry</strong><p className="mt-1 text-xs text-muted-foreground">Major traditional-planet aspects within {result.secondaryGeometry.majorAspectOrb.toFixed(0)}°. This is unscored context only.</p></div>
+          <span className="rounded border border-border px-2 py-1 font-mono text-[10px] uppercase text-muted-foreground">{result.secondaryGeometry.status}</span>
+        </div>
+        {result.secondaryGeometry.aspects.length === 0 ? <p className="mt-3 text-xs text-muted-foreground">No major traditional-planet aspect falls within the declared orb.</p> : <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[720px] text-left text-xs"><thead className="border-b border-border text-muted-foreground"><tr><th className="pb-2 pr-3">Pair</th><th className="pb-2 pr-3">Aspect</th><th className="pb-2 pr-3">Separation / orb</th><th className="pb-2 pr-3">God sectors</th><th className="pb-2">Agent families</th></tr></thead><tbody>{result.secondaryGeometry.aspects.map(aspect => <tr key={`${aspect.first}-${aspect.second}-${aspect.type}`} className="border-b border-border/60 last:border-0"><td className="py-2 pr-3 font-semibold">{aspect.first} / {aspect.second}</td><td className="py-2 pr-3">{aspect.type} {aspect.exactAngle}°</td><td className="py-2 pr-3 font-mono">{aspect.separation.toFixed(2)}° / {aspect.orb.toFixed(2)}°</td><td className="py-2 pr-3">{aspect.firstGodSector.replaceAll("-", " ")} / {aspect.secondGodSector.replaceAll("-", " ")}</td><td className="py-2">{aspect.firstAgentFamily.replaceAll("-", " ")} / {aspect.secondAgentFamily.replaceAll("-", " ")}</td></tr>)}</tbody></table></div>}
+        <p className="mt-3 text-xs text-muted-foreground">{result.secondaryGeometry.note}</p>
+      </div>
       <p className="mt-2 text-xs text-muted-foreground"><strong>Public rule:</strong> {result.synthesis.publicRule}</p>
       {result.conflicts.length > 0 && <p className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-200"><strong>Conflict / no-call evidence:</strong> {result.conflicts.join(" ")}</p>}
     </section>

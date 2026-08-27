@@ -94,6 +94,8 @@ The Agent polarity count is the number of eligible traditional planets falling i
 
 `strength` is never a pooled point total. It reports only each view's individual count margin: `weak` (1), `moderate` (2), `strong` (3), or `extreme` (4 or more). The synthesis preserves both margins and its agreement count; it does not sum them.
 
+The implementation also records conjunction, sextile, square, trine, and opposition geometry among the seven traditional planets when the exact separation is within a declared 5° orb. Each row displays the aspect type, exact separation, orb, both God sectors, and both Agent receiving families. This is explicitly `unscored context`: it cannot change a God-axis count, Agent-family count, synthesis state, strength label, or public outcome.
+
 ## Inverse Audit and Validation
 
 The inverse audit rotates the complete God axis by exactly 12 RA hours: God-ASC becomes 12h and God-DSC becomes 0h. It is logged as `god-axis-v1-inverse` beside the standard result. Because the standard sector geometry is exactly symmetric, a non-neutral inverse God polarity is the mechanical polarity complement of the standard result. It is retained for traceability only, not treated as independent confirming evidence. It does not swap teams, choose a preferred orientation, change a historical result, or feed a public synthesis verdict.
@@ -118,6 +120,12 @@ This single replay shows the method's designed restraint: the Agent receiving fi
 The Sports Horary interface exposes `God ↔ Agent Flow` as a fifth separately selectable method. Its tab renders the fixed God-ASC/God-DSC explanation, standard and inverse God-axis audit controls, exact venue input requirements for the separate local Agent receiver chart, and no manual Cluster placement field. The interface does not describe God View as receiving teams, venue coordinates, local houses, or a local horizon.
 
 Using the frozen Target Field record through normal interface controls produced the standard `god-agent-family-flow-v1` audit panel. It displayed the 1–1 God-axis tie, 2–5 Agent family counts, all seven RA/declination-to-local-house rows, all six visible matrix cell totals, and `neutral` / **No call** synthesis. The God View table identifies Venus as `god-dsc` in local H9 and Saturn as `god-asc` in local H4; all other traditional planets are fixed-sector quadrature records for this event.
+
+After the unscored secondary aspect audit was added, a lightweight fresh preview initially returned a blank startup capture and then rendered the Sports Horary page and `God ↔ Agent Flow` tab normally. The focused engine regression confirms the aspect rows are bounded by the declared 5° orb and cannot alter the frozen neutral Colorado–Minnesota result.
+
+The refreshed God ↔ Agent form retained the exact Target Field venue coordinates, local start, teams, and recorded pregame line used by the historical script before submitting the updated aspect audit.
+
+The submitted interface displayed six declared-orb aspect rows, the visible `unscored context` status, and the explicit statement that these rows do not change either view's counts, synthesis, strength, or public outcome. It retained the standard God tie, Agent-DSC polarity, neutral synthesis, and public **No call**. The browser console contained only the known development service-worker MIME warning and no application exception.
 
 ## References
 
