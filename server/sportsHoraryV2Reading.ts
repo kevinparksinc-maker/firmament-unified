@@ -127,6 +127,43 @@ TONE: Direct, specific, grounded in the data. Every claim is checkable against t
 VOICE: A master of the ancient sky. Direct, specific, no hedging. Every claim traces to house lord positions and dignity. Use Markdown headers.`;
 }
 
+/**
+ * The Cluster decision itself is deterministic. If its optional prose narrator
+ * is unavailable, retain the real layer evidence rather than replacing the
+ * calculation with an error state or invented explanation.
+ */
+export function formatDeterministicSportsHoraryFallback(
+  input: SportsHoraryV2Input,
+  prediction: ReturnType<typeof calculateFullPrediction>,
+): string {
+  const favorite = input.favoriteName || "the Favorite";
+  const challenger = input.challengerName || "the Challenger";
+  const verdict =
+    prediction.predictedWinner === "A"
+      ? `${favorite} / Side A`
+      : prediction.predictedWinner === "B"
+        ? `${challenger} / Side B`
+        : "No decisive Cluster result";
+  const votes = prediction.layerVoteScorecard;
+  const sideALayers = votes.votes.filter((vote) => vote.choice === "A").map((vote) => vote.layer);
+  const sideBLayers = votes.votes.filter((vote) => vote.choice === "B").map((vote) => vote.layer);
+
+  return [
+    "## Deterministic Cluster result",
+    "The optional narrative service is unavailable. The calculation below is preserved from the deterministic Territorial, KP, and layer-vote outputs; no generated interpretation has been substituted.",
+    "",
+    `**Result: ${verdict}.** ${votes.aggregateReason}`,
+    `Eligible layer choices: Side A ${votes.sideAVotes}; Side B ${votes.sideBVotes}; ties ${votes.ties}; abstentions ${votes.abstentions}.`,
+    "",
+    "### Directional layer evidence",
+    `- **Side A:** ${sideALayers.length > 0 ? sideALayers.join("; ") : "No eligible directional layers"}.`,
+    `- **Side B:** ${sideBLayers.length > 0 ? sideBLayers.join("; ") : "No eligible directional layers"}.`,
+    "",
+    "### Audit boundary",
+    `Raw point totals remain diagnostics only: Side A ${prediction.sideATotal.toFixed(2)}, Side B ${prediction.sideBTotal.toFixed(2)}, margin ${prediction.margin.toFixed(2)}. They do not override the layer-count result.`,
+  ].join("\n");
+}
+
 export async function sportsHoraryV2Layer(
   input: SportsHoraryV2Input,
 ): Promise<SportsHoraryV2Output> {
@@ -211,16 +248,24 @@ export async function sportsHoraryV2Layer(
     { role: "user", content: input.question },
   ];
 
-  const response = await invokeLLM({
-    messages: [{ role: "system", content: systemPrompt }, ...messages],
-    max_tokens: 2500,
-  });
+  let answer: string;
+  let narrationUnavailable = false;
+  try {
+    const response = await invokeLLM({
+      messages: [{ role: "system", content: systemPrompt }, ...messages],
+      max_tokens: 2500,
+    });
+    answer = (response.choices[0].message.content as string).trim();
+  } catch {
+    narrationUnavailable = true;
+    answer = formatDeterministicSportsHoraryFallback(input, prediction);
+  }
 
   return {
-    answer: (response.choices[0].message.content as string).trim(),
+    answer,
     verdict: prediction.predictedWinner === "A" ? "Favorite" : prediction.predictedWinner === "B" ? "Challenger" : "Even",
     score: prediction.sideATotal - prediction.sideBTotal,
-    flags: [],
+    flags: narrationUnavailable ? ["narration_unavailable"] : [],
     usedChart,
     mapOrientation,
     margin: prediction.margin,

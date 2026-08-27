@@ -1,0 +1,47 @@
+{
+  "protocol": "tyson-douglas-stress-test-v1",
+  "status": "frozen historical calibration record",
+  "event": {
+    "sport": "boxing",
+    "sideA": "Mike Tyson",
+    "sideB": "James Buster Douglas",
+    "localDate": "1990-02-11",
+    "localTime": "09:00",
+    "timezone": "Asia/Tokyo",
+    "venue": "Tokyo Dome",
+    "latitude": 35.7056,
+    "longitude": 139.7519,
+    "eventInstantBasis": "The Guardian reports that Tyson entered the ring at 9am on 11 February 1990 in its contemporary Tokyo fight reconstruction. This calibration fixes that reported local instant at 09:00 Asia/Tokyo; it is not represented as an independently verified bell time."
+  },
+  "pregame": {
+    "favoriteSide": "A",
+    "favorite": "Mike Tyson",
+    "underdogSide": "B",
+    "underdog": "James Buster Douglas",
+    "marketContext": "The Guardian documents Douglas as the 42-to-1 underdog. The World Boxing Council independently describes Tyson as the overwhelming favorite in the Tokyo Dome bout."
+  },
+  "outcomeProvenance": {
+    "winnerSide": "B",
+    "winner": "James Buster Douglas",
+    "method": "tenth-round knockout",
+    "rule": "This observed result is post-calculation provenance only. It must never be supplied to a calculation procedure."
+  },
+  "sources": [
+    {
+      "label": "The Guardian, From the Vault: Mike Tyson is knocked out by 42–1 underdog Buster Douglas",
+      "url": "https://www.theguardian.com/sport/blog/2015/feb/11/mike-tyson-underdog-buster-douglas-boxing-from-the-vault",
+      "usedFor": ["reported 9am ring entry", "Tokyo Dome event context", "Douglas 42-to-1 underdog", "tenth-round result"]
+    },
+    {
+      "label": "World Boxing Council, 36 Years Ago Buster Douglas Stopped the Baddest Man on the Planet",
+      "url": "https://wbcboxing.com/en/36-years-ago-buster-douglas-stopped-the-baddest-man-on-the-planet/",
+      "usedFor": ["date", "Tokyo Dome location", "Tyson favorite context", "Douglas tenth-round knockout"]
+    },
+    {
+      "label": "Tokyo Dome coordinate reference",
+      "url": "https://en.wikipedia.org/wiki/Tokyo_Dome",
+      "usedFor": ["stadium latitude and longitude reference"]
+    }
+  ],
+  "evaluationBoundary": "This is a single historical stress test. It is not a prediction, probability, wagering instruction, or empirical validation of any method."
+}
