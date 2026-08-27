@@ -98,3 +98,9 @@
 - [x] Scan Mars, Mercury, Venus, Jupiter, and Saturn pair distances using the declared 1.0° planetary-war threshold.
 - [x] Display detected phenomena and their raw evidence in Atlas Audit Mode, selected-point detail, and Atlas Scholar context.
 - [x] Add deterministic phenomena regressions, validate the Atlas route, and keep all detection labels separate from symbolic interpretation text.
+- [x] Define a versioned local Atlas aspects and configurations registry with declared participating points, aspect angles, orb policy, and house-system boundary.
+- [x] Calculate major interplanetary aspects, planet-to-angle contacts, and applying/separating states from live tropical longitudes and live longitudinal motion.
+- [x] Detect sign and Equal-House stelliums, dispositors, dispositor chains, and mutual reception using declared traditional rulers.
+- [x] Detect auditable named geometric configurations, beginning with Grand Trines, T-Squares, Grand Crosses, Yods, and Kites.
+- [x] Surface all aspect/configuration evidence in Atlas Audit Mode, selected-point detail, and Atlas Scholar context without inventing missing configurations.
+- [x] Add deterministic aspect/configuration tests, validate the Atlas route, and deliver the isolated feature-branch update.

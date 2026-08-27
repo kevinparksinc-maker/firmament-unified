@@ -740,6 +740,17 @@ const zeteticAtlasRouter = router({
             threshold: z.literal(1),
             rule: z.string().min(1).max(200),
           })).max(10),
+          aspectScan: z.object({
+            aspects: z.array(z.object({
+              first: z.string().min(1).max(80), second: z.string().min(1).max(80), type: z.enum(["conjunction", "sextile", "square", "trine", "opposition", "quincunx"]),
+              angle: z.number().min(0).max(180), separation: z.number().min(0).max(180), orb: z.number().min(0).max(8), orbLimit: z.number().min(0).max(8), state: z.enum(["applying", "separating", "exact", "static-angle"]), rule: z.string().min(1).max(300),
+            })).max(80),
+            angularContacts: z.array(z.object({ planet: z.string().min(1).max(80), angle: z.enum(["Ascendant", "Descendant", "Midheaven", "Imum Coeli"]), distance: z.number().min(0).max(5), orbLimit: z.literal(5), rule: z.string().min(1).max(200) })).max(40),
+            stelliums: z.array(z.object({ scope: z.enum(["sign", "Equal House"]), location: z.string().min(1).max(80), planets: z.array(z.string().min(1).max(80)).min(3).max(10), minimum: z.literal(3), rule: z.string().min(1).max(200) })).max(24),
+            dispositorChains: z.array(z.object({ planet: z.string().min(1).max(80), sign: z.string().min(1).max(24), immediateRuler: z.string().min(1).max(80), chain: z.array(z.string().min(1).max(80)).min(1).max(12), terminal: z.string().min(1).max(80), isLoop: z.boolean(), rule: z.string().min(1).max(220) })).max(10),
+            mutualReceptions: z.array(z.object({ first: z.string().min(1).max(80), second: z.string().min(1).max(80), firstSign: z.string().min(1).max(24), secondSign: z.string().min(1).max(24), rule: z.string().min(1).max(200) })).max(20),
+            configurations: z.array(z.object({ type: z.enum(["Grand Trine", "T-Square", "Grand Cross", "Yod", "Kite"]), planets: z.array(z.string().min(1).max(80)).min(3).max(4), evidence: z.string().min(1).max(240), rule: z.string().min(1).max(300) })).max(20),
+          }),
         }),
         history: z.array(z.object({
           role: z.enum(["user", "assistant"]),

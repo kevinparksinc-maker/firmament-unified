@@ -33,6 +33,14 @@ const chart = {
     { name: "Ascendant", kind: "angle" as const, longitude: 234.703, sign: "Scorpio", degree: 24.703, house: 1, rightAscension: 15.49, declination: -18.9, azimuth: 148.3, altitude: 31.7, nakshatra: { name: "Jyeshtha", lord: "Mercury", pada: 3 }, fixedStars: [], dignity: { status: "not-classically-assigned" as const, label: "No classical essential dignity assignment", scope: "no classical assignment" as const }, combustion: { applicable: false, isKazimi: false, isCombust: false, status: "not-applicable" as const, angularDistance: null, threshold: 15, rule: "Strict raw tropical longitude: shortest Sun–planet distance ≤ 15.0°" }, motion: { applicable: false, speedDegreesPerDay: null, isRetrograde: false, rule: "Geocentric tropical ecliptic-of-date longitude uses a 12-hour central difference; negative degrees/day is retrograde." } },
   ],
   planetaryWars: [],
+  aspectScan: {
+    aspects: [{ first: "Sun", second: "Ascendant", type: "conjunction", angle: 0, separation: 3.341, orb: 3.341, orbLimit: 8, state: "separating", rule: "Live tropical conjunction: 0° ± 8°." }],
+    angularContacts: [{ planet: "Sun", angle: "Ascendant", distance: 3.341, orbLimit: 5, rule: "Live tropical planet-to-angle contact within 5° of the active direct-chart angle." }],
+    stelliums: [{ scope: "sign", location: "Scorpio", planets: ["Sun", "Mercury", "Venus"], minimum: 3, rule: "3+ live planets in the same tropical sign." }],
+    dispositorChains: [{ planet: "Sun", sign: "Scorpio", immediateRuler: "Mars", chain: ["Sun", "Mars", "Mars"], terminal: "Mars", isLoop: true, rule: "Traditional sign rulers only." }],
+    mutualReceptions: [],
+    configurations: [],
+  },
 };
 
 describe("Zetetic Atlas Scholar context", () => {
@@ -47,6 +55,8 @@ describe("Zetetic Atlas Scholar context", () => {
     expect(context).toContain("Solar condition: not applicable.");
     expect(context).toContain("Longitudinal motion: direct; speed 1.000°/day.");
     expect(context).toContain("No qualifying pair meets the declared 1.0° planetary-war threshold.");
+    expect(context).toContain("Sun/Ascendant: conjunction; separation 3.3°; orb 3.3° of 8.0°; separating.");
+    expect(context).toContain("Stelliums: sign Scorpio: Sun, Mercury, Venus.");
     expect(context).toContain("Antares [Royal] (orb 1.6°; The Transformer; Mars/Jupiter)");
     expect(context).toContain("RA/declination for Gleason; topocentric azimuth/altitude for local compass");
   });

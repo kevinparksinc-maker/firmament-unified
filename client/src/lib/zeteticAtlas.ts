@@ -3,6 +3,7 @@ import { FIXED_STARS } from "./fixedStars";
 import { getNakshatraAt } from "./nakshatra";
 import { getAtlasDignity, getStrictCombustion, type AtlasCombustion, type AtlasDignity } from "./atlasDignities";
 import { ATLAS_PHENOMENA_REGISTRY, findAtlasPlanetaryWars, getAtlasMotion, type AtlasMotion, type AtlasPlanetaryWar } from "./atlasPhenomena";
+import { calculateAtlasAspectScan, type AtlasAspectScan } from "./atlasAspects";
 
 const astronomyDefault = Reflect.get(AstronomyModule, "default") as typeof AstronomyModule | undefined;
 const Astronomy = astronomyDefault ?? AstronomyModule;
@@ -73,6 +74,7 @@ export type ZeteticChart = {
   houses: ZeteticHouse[];
   points: ZeteticPoint[];
   planetaryWars: AtlasPlanetaryWar[];
+  aspectScan: AtlasAspectScan;
 };
 
 const ZODIAC = [
@@ -258,6 +260,10 @@ export function calculateZeteticChart(input: ZeteticInput): ZeteticChart {
     const horizon = Astronomy.Horizon(time, observer, equatorial.rightAscension, equatorial.declination, "normal");
     return makePoint(key, name, short, kind, longitude, equatorial.rightAscension, equatorial.declination, horizon.azimuth, horizon.altitude, ascendant, color, sunLongitude, { applicable: false, speedDegreesPerDay: null, isRetrograde: false, rule: ATLAS_PHENOMENA_REGISTRY.retrograde.rule });
   });
+  const aspectScan = calculateAtlasAspectScan(
+    planets.map(planet => ({ ...planet, speedDegreesPerDay: planet.motion.speedDegreesPerDay })),
+    points.filter(point => point.kind === "angle"),
+  );
 
   const houses = Array.from({ length: 12 }, (_, index) => {
     const start = normalize(ascendant + index * 30);
@@ -267,5 +273,5 @@ export function calculateZeteticChart(input: ZeteticInput): ZeteticChart {
     return { number: index + 1, start, end, startLabel: `${startZodiac.symbol} ${startZodiac.name} ${startZodiac.degree.toFixed(1)}°`, endLabel: `${endZodiac.symbol} ${endZodiac.name} ${endZodiac.degree.toFixed(1)}°` };
   });
 
-  return { baseline: ATLAS_CALCULATION_BASELINE, input, utcDate, utcDegrees, ascendant, descendant, midheaven, imumCoeli, houses, points: [...planets, ...points], planetaryWars };
+  return { baseline: ATLAS_CALCULATION_BASELINE, input, utcDate, utcDegrees, ascendant, descendant, midheaven, imumCoeli, houses, points: [...planets, ...points], planetaryWars, aspectScan };
 }

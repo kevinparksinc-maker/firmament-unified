@@ -29,6 +29,17 @@ describe("Zetetic Atlas calculation module", () => {
     expect(mercury?.fixedStars).toEqual(expect.arrayContaining([
       expect.objectContaining({ name: "Antares", isRoyal: true }),
     ]));
+    expect(chart.aspectScan.aspects).toEqual(expect.arrayContaining([
+      expect.objectContaining({ first: "Sun", second: "Mars", type: "square", state: "separating" }),
+    ]));
+    expect(chart.aspectScan.angularContacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ planet: "Sun", angle: "Ascendant" }),
+      expect.objectContaining({ planet: "Mars", angle: "Imum Coeli" }),
+    ]));
+    expect(chart.aspectScan.stelliums).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: "sign", location: "Scorpio", planets: ["Sun", "Mercury", "Venus", "Pluto"] }),
+      expect.objectContaining({ scope: "Equal House", location: "House 12", planets: ["Mercury", "Venus", "Pluto"] }),
+    ]));
   });
 
   it("keeps the supplied 235° Mars row as a historical Equal-House reference only", () => {
