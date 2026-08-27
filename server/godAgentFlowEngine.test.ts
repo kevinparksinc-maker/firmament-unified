@@ -42,6 +42,9 @@ describe("god-agent-family-flow-v1", () => {
 
     expect(result.godView.points).toHaveLength(7);
     expect(result.agentView.counts.eligible).toBe(7);
+    expect(result.topocentricObservation.status).toBe("unscored observation");
+    expect(result.topocentricObservation.points).toHaveLength(7);
+    expect(result.topocentricObservation.points.every(point => [point.rightAscensionHours, point.declination, point.azimuth, point.altitude].every(Number.isFinite))).toBe(true);
     expect(result.agentView.counts.asc + result.agentView.counts.dsc).toBe(7);
     expect(result.familyFlow.rows).toHaveLength(7);
     expect(Object.values(result.familyFlow.cells).reduce((total, count) => total + count, 0)).toBe(7);
@@ -57,6 +60,7 @@ describe("god-agent-family-flow-v1", () => {
     expect(result.secondaryGeometry.note).toMatch(/do not change/i);
     expect(result.godView.polarity).toBe("tie");
     expect(result.agentView.polarity).toBe("dsc");
+    expect(result.topocentricObservation.note).toMatch(/does not alter/i);
     expect(result.synthesis.state).toBe("neutral");
     expect(result.outcome).toBe("no-call");
     expect(result.verdict).toContain("NO CALL");

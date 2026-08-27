@@ -4,6 +4,12 @@ import { trpc } from "@/lib/trpc";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { speak, stopSpeaking, isSpeaking } from "@/lib/textToSpeech";
+import {
+  evaluateSportsProtocolLedger,
+  eventKeyFrom,
+  type ProtocolLedgerRun,
+  type ProtocolOutcome,
+} from "@/lib/sportsProtocolLedger";
 import { Volume2, Square } from "lucide-react";
 
 /**
@@ -227,6 +233,13 @@ type GodAgentFlowResult = {
     reason: string;
     points: Array<{ planet: string; geocentricRaHours: number; orientedRaHours: number; declination: number; declinationBand: string; sector: "god-asc" | "god-dsc" | "quadrature" | "boundary"; distanceToBoundaryHours: number }>;
   };
+  topocentricObservation: {
+    status: "unscored observation";
+    referenceFrame: string;
+    observer: { latitude: number; longitude: number; altitude: number };
+    points: Array<{ planet: string; rightAscensionHours: number; declination: number; azimuth: number; altitude: number }>;
+    note: string;
+  };
   agentView: {
     familyHouses: { asc: number[]; dsc: number[] };
     counts: { asc: number; dsc: number; eligible: number };
@@ -256,6 +269,55 @@ type GodAgentFlowResult = {
   };
   conflicts: string[];
 };
+
+const protocolMethodLabels: Record<ProtocolLedgerRun["method"], string> = {
+  cluster: "Cluster / Layer Vote",
+  frawley: "Frawley Event",
+  "tajika-prasna": "Tajika / Prasna",
+  panchanga: "Panchanga / Archetype",
+  "god-agent": "God ↔ Agent Flow",
+};
+
+function ProtocolLedger({ runs }: { runs: ProtocolLedgerRun[] }) {
+  const conclusion = evaluateSportsProtocolLedger(runs);
+  const tone = conclusion.state === "side-a-convergence" || conclusion.state === "side-b-convergence"
+    ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100"
+    : conclusion.state === "cross-method-conflict" || conclusion.state === "event-record-mismatch"
+      ? "border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-100"
+      : "border-border bg-card/70";
+  const readableOutcome = (outcome: ProtocolOutcome) => outcome === "side-a" ? "Side A / Favorite" : outcome === "side-b" ? "Side B / Challenger" : "No call";
+
+  return (
+    <section className="mb-6 rounded-lg border border-border bg-card/70 p-4 shadow-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Protocol registry</p>
+          <h2 className="mt-1 text-lg font-semibold">Cross-method ledger</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Retains one latest result per method. It compares only event-matched strict standard runs; it never pools native method scores.</p>
+        </div>
+        <span className="w-fit rounded border border-border px-2 py-1 font-mono text-[10px] uppercase text-muted-foreground">{conclusion.state.replaceAll("-", " ")}</span>
+      </div>
+      <div className={`mt-3 rounded border p-3 text-sm ${tone}`}><strong>Conclusion boundary:</strong> {conclusion.reason}</div>
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full min-w-[700px] text-left text-xs">
+          <thead className="border-b border-border text-muted-foreground"><tr><th className="pb-2 pr-3">Method</th><th className="pb-2 pr-3">Version</th><th className="pb-2 pr-3">Orientation</th><th className="pb-2 pr-3">Result</th><th className="pb-2">Protocol role</th></tr></thead>
+          <tbody>
+            {runs.length === 0 ? <tr><td colSpan={5} className="py-3 text-muted-foreground">No method result has been retained yet. Run each strict method from the same verified event record to assess convergence or conflict.</td></tr> : runs.map(run => (
+              <tr key={run.method} className="border-b border-border/60 last:border-0">
+                <td className="py-2 pr-3 font-semibold">{run.label}</td>
+                <td className="py-2 pr-3 font-mono">{run.version}</td>
+                <td className="py-2 pr-3">{run.orientation}</td>
+                <td className="py-2 pr-3">{readableOutcome(run.outcome)}</td>
+                <td className="py-2">{run.comparable && run.orientation !== "inverse-180" ? "Strict event result — comparable after event-key match" : run.exclusionReason || "Excluded from cross-method conclusion"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">A no-call is preserved as a no-call. It is not reinterpreted as a favorite or underdog selection. Manual Cluster results and inverse audits remain visible as audits, but cannot create or break a cross-method conclusion.</p>
+    </section>
+  );
+}
 
 function VerdictBanner({
   verdict,
@@ -523,6 +585,14 @@ function GodAgentFlowAudit({ result }: { result: GodAgentFlowResult }) {
         {result.secondaryGeometry.aspects.length === 0 ? <p className="mt-3 text-xs text-muted-foreground">No major traditional-planet aspect falls within the declared orb.</p> : <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[720px] text-left text-xs"><thead className="border-b border-border text-muted-foreground"><tr><th className="pb-2 pr-3">Pair</th><th className="pb-2 pr-3">Aspect</th><th className="pb-2 pr-3">Separation / orb</th><th className="pb-2 pr-3">God sectors</th><th className="pb-2">Agent families</th></tr></thead><tbody>{result.secondaryGeometry.aspects.map(aspect => <tr key={`${aspect.first}-${aspect.second}-${aspect.type}`} className="border-b border-border/60 last:border-0"><td className="py-2 pr-3 font-semibold">{aspect.first} / {aspect.second}</td><td className="py-2 pr-3">{aspect.type} {aspect.exactAngle}°</td><td className="py-2 pr-3 font-mono">{aspect.separation.toFixed(2)}° / {aspect.orb.toFixed(2)}°</td><td className="py-2 pr-3">{aspect.firstGodSector.replaceAll("-", " ")} / {aspect.secondGodSector.replaceAll("-", " ")}</td><td className="py-2">{aspect.firstAgentFamily.replaceAll("-", " ")} / {aspect.secondAgentFamily.replaceAll("-", " ")}</td></tr>)}</tbody></table></div>}
         <p className="mt-3 text-xs text-muted-foreground">{result.secondaryGeometry.note}</p>
       </div>
+      <div className="mt-4 rounded border border-sky-500/30 bg-sky-500/5 p-3">
+        <div className="flex items-start justify-between gap-2 flex-wrap">
+          <div><strong className="text-sm">Topocentric compass observation</strong><p className="mt-1 text-xs text-muted-foreground">{result.topocentricObservation.referenceFrame}; observer {result.topocentricObservation.observer.latitude.toFixed(4)}°, {result.topocentricObservation.observer.longitude.toFixed(4)}°.</p></div>
+          <span className="rounded border border-sky-500/30 px-2 py-1 font-mono text-[10px] uppercase text-muted-foreground">{result.topocentricObservation.status}</span>
+        </div>
+        <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-xs"><thead className="border-b border-border text-muted-foreground"><tr><th className="pb-2 pr-3">Planet</th><th className="pb-2 pr-3">Topocentric RA</th><th className="pb-2 pr-3">Declination</th><th className="pb-2 pr-3">Azimuth</th><th className="pb-2">Altitude</th></tr></thead><tbody>{result.topocentricObservation.points.map(point => <tr key={point.planet} className="border-b border-border/60 last:border-0"><td className="py-2 pr-3 font-semibold">{point.planet}</td><td className="py-2 pr-3 font-mono">{point.rightAscensionHours.toFixed(4)}h</td><td className="py-2 pr-3 font-mono">{point.declination.toFixed(3)}°</td><td className="py-2 pr-3 font-mono">{point.azimuth.toFixed(2)}°</td><td className="py-2 font-mono">{point.altitude.toFixed(2)}°</td></tr>)}</tbody></table></div>
+        <p className="mt-3 text-xs text-muted-foreground"><strong>Audit boundary:</strong> {result.topocentricObservation.note}</p>
+      </div>
       <p className="mt-2 text-xs text-muted-foreground"><strong>Public rule:</strong> {result.synthesis.publicRule}</p>
       {result.conflicts.length > 0 && <p className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-200"><strong>Conflict / no-call evidence:</strong> {result.conflicts.join(" ")}</p>}
     </section>
@@ -556,6 +626,7 @@ export default function SportsHorary() {
   const [eventMethodResult, setEventMethodResult] = useState<EventMethodResult | null>(null);
   const [panchangaResult, setPanchangaResult] = useState<PanchangaArchetypeResult | null>(null);
   const [godAgentResult, setGodAgentResult] = useState<GodAgentFlowResult | null>(null);
+  const [protocolRuns, setProtocolRuns] = useState<ProtocolLedgerRun[]>([]);
   const [isSpeakingAnswer, setIsSpeakingAnswer] = useState(false);
   const [calculatedChart, setCalculatedChart] = useState<any>(null);
 
@@ -582,6 +653,22 @@ export default function SportsHorary() {
     },
   });
 
+  const recordProtocolRun = (run: ProtocolLedgerRun) => {
+    setProtocolRuns(previous => [...previous.filter(existing => existing.method !== run.method), run]);
+  };
+
+  const recordClusterRun = (verdict: Verdict, orientation: "standard" | "inverse-180", version: string, exclusionReason: string) => {
+    recordProtocolRun({
+      method: "cluster",
+      label: protocolMethodLabels.cluster,
+      version,
+      orientation,
+      outcome: verdict === "Favorite" ? "side-a" : verdict === "Challenger" ? "side-b" : "no-call",
+      comparable: false,
+      exclusionReason,
+    });
+  };
+
   const ask = trpc.sportsHorary.ask.useMutation({
     onSuccess: data => {
       setMessages(prev => [...prev, { role: "assistant", content: data.answer }]);
@@ -591,6 +678,7 @@ export default function SportsHorary() {
         flags: data.flags,
         mapOrientation: "standard",
       });
+      recordClusterRun(data.verdict as Verdict, "standard", "legacy-unstructured-chart", "Legacy unstructured chart input is not a strict event record and is excluded from cross-method comparison.");
     },
     onError: err => {
       setMessages(prev => [
@@ -611,6 +699,7 @@ export default function SportsHorary() {
         mapOrientation: data.mapOrientation,
         layerVotes: data.layerVotes as LayerVoteScorecard | undefined,
       });
+      recordClusterRun(data.verdict as Verdict, data.mapOrientation, (data.layerVotes as LayerVoteScorecard | undefined)?.version || "layer-vote-v1", "Cluster result is based on manually supplied or general chart input; it is not a strict event record and is excluded from cross-method comparison.");
     },
     onError: err => {
       setMessages(prev => [
@@ -624,6 +713,15 @@ export default function SportsHorary() {
     setMessages(prev => [...prev, { role: "assistant", content: data.answer }]);
     setEventMethodResult(data.result);
     setResult(null);
+    recordProtocolRun({
+      method: data.result.version === "frawley-event-v1" ? "frawley" : "tajika-prasna",
+      label: data.result.version === "frawley-event-v1" ? protocolMethodLabels.frawley : protocolMethodLabels["tajika-prasna"],
+      version: data.result.version,
+      orientation: data.result.orientation,
+      outcome: data.result.outcome,
+      comparable: true,
+      event: eventKeyFrom(data.result.event),
+    });
   };
 
   const frawleyEvent = trpc.sportsHorary.frawleyEvent.useMutation({
@@ -644,6 +742,15 @@ export default function SportsHorary() {
       setEventMethodResult(null);
       setGodAgentResult(null);
       setResult(null);
+      recordProtocolRun({
+        method: "panchanga",
+        label: protocolMethodLabels.panchanga,
+        version: typed.result.version,
+        orientation: typed.result.orientation,
+        outcome: typed.result.outcome,
+        comparable: true,
+        event: eventKeyFrom(typed.result.event),
+      });
     },
     onError: err => setMessages(prev => [...prev, { role: "assistant", content: `Panchanga / Team Archetype method could not run: ${err.message}` }]),
   });
@@ -656,6 +763,15 @@ export default function SportsHorary() {
       setEventMethodResult(null);
       setPanchangaResult(null);
       setResult(null);
+      recordProtocolRun({
+        method: "god-agent",
+        label: protocolMethodLabels["god-agent"],
+        version: typed.result.version,
+        orientation: typed.result.orientation,
+        outcome: typed.result.outcome === "side-a-context" ? "side-a" : typed.result.outcome === "side-b-context" ? "side-b" : "no-call",
+        comparable: true,
+        event: eventKeyFrom(typed.result.event),
+      });
     },
     onError: err => setMessages(prev => [...prev, { role: "assistant", content: `God View / Agent View flow could not run: ${err.message}` }]),
   });
@@ -900,6 +1016,8 @@ export default function SportsHorary() {
                     : "God ↔ Agent Flow: a fixed God ASC-versus-DSC RA/declination axis, plus a separate local Agent house-family receiver field. Direction comes before magnitude; conflict means no call."}
           </p>
         </Tabs>
+
+        <ProtocolLedger runs={protocolRuns} />
 
         {sportsMethod !== "panchanga" ? <Tabs value={mapOrientation} onValueChange={value => {
           const next = value as "standard" | "inverse-180";

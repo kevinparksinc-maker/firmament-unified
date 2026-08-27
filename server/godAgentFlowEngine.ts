@@ -12,6 +12,9 @@ const Astronomy = require("astronomy-engine") as {
   MakeTime: (date: Date) => unknown;
   GeoVector: (body: unknown, time: unknown, aberration: boolean) => { x: number; y: number; z: number };
   EquatorFromVector: (vector: { x: number; y: number; z: number }) => { ra: number; dec: number };
+  Observer: new (latitude: number, longitude: number, height: number) => unknown;
+  Equator: (body: unknown, time: unknown, observer: unknown, ofDate: boolean, aberration: boolean) => { ra: number; dec: number };
+  Horizon: (time: unknown, observer: unknown, ra: number, dec: number, refraction: "normal") => { azimuth: number; altitude: number };
   Body: Record<string, unknown>;
 };
 
@@ -93,6 +96,22 @@ export type GodAgentSecondaryAspect = {
   secondAgentFamily: AgentFamily;
 };
 
+export type GodAgentTopocentricPoint = {
+  planet: TraditionalPlanetName;
+  rightAscensionHours: number;
+  declination: number;
+  azimuth: number;
+  altitude: number;
+};
+
+export type GodAgentTopocentricObservation = {
+  status: "unscored observation";
+  referenceFrame: "Astronomy Engine topocentric horizontal coordinates";
+  observer: { latitude: number; longitude: number; altitude: number };
+  points: GodAgentTopocentricPoint[];
+  note: string;
+};
+
 export type GodAgentFlowInput = EventChartRequest & {
   venueName: string;
   favoriteName: string;
@@ -120,6 +139,7 @@ export type GodAgentFlowResult = {
     agentMapping: "local ASC = Side A / favorite; local DSC = Side B / challenger";
   };
   godView: GodAxisResult;
+  topocentricObservation: GodAgentTopocentricObservation;
   agentView: {
     familyHouses: { asc: number[]; dsc: number[] };
     counts: { asc: number; dsc: number; eligible: number };
@@ -246,6 +266,29 @@ export function calculateGodAxis(utcDate: Date, orientation: GodAxisOrientation 
   };
 }
 
+function calculateTopocentricObservation(utcDate: Date, latitude: number, longitude: number, altitude = 0): GodAgentTopocentricObservation {
+  const time = Astronomy.MakeTime(utcDate);
+  const observer = new Astronomy.Observer(latitude, longitude, altitude);
+  const points = GOD_AXIS_PLANETS.map(planet => {
+    const equatorial = Astronomy.Equator(BODY_BY_PLANET[planet], time, observer, true, true);
+    const horizon = Astronomy.Horizon(time, observer, equatorial.ra, equatorial.dec, "normal");
+    return {
+      planet,
+      rightAscensionHours: equatorial.ra,
+      declination: equatorial.dec,
+      azimuth: horizon.azimuth,
+      altitude: horizon.altitude,
+    };
+  });
+  return {
+    status: "unscored observation",
+    referenceFrame: "Astronomy Engine topocentric horizontal coordinates",
+    observer: { latitude, longitude, altitude },
+    points,
+    note: "Topocentric altitude/azimuth is displayed for coordinate audit only. It does not alter God-axis sectors, Agent-family counts, synthesis, strength labels, or outcome.",
+  };
+}
+
 function houseForLongitude(longitude: number, cusps: number[]): number {
   for (let index = 0; index < cusps.length; index += 1) {
     const start = cusps[index]!;
@@ -325,6 +368,7 @@ export function calculateGodAgentFamilyFlow(input: GodAgentFlowInput): GodAgentF
   const orientation = input.orientation ?? "standard";
   const godView = calculateGodAxis(input.utcDate, orientation);
   const agentChart = calculatePlacidusEventChart(input);
+  const topocentricObservation = calculateTopocentricObservation(input.utcDate, input.latitude, input.longitude, input.altitude ?? 0);
   const agentByName = new Map(agentChart.planets.map(planet => [planet.name, planet]));
   const rows: GodAgentMatrixRow[] = godView.points.map(point => {
     const agentPlanet = agentByName.get(point.planet);
@@ -385,6 +429,7 @@ export function calculateGodAgentFamilyFlow(input: GodAgentFlowInput): GodAgentF
       agentMapping: "local ASC = Side A / favorite; local DSC = Side B / challenger",
     },
     godView,
+    topocentricObservation,
     agentView: {
       familyHouses: { asc: [...AGENT_ASC_HOUSES], dsc: [7, 9, 12, 4, 5] },
       counts: agentCounts,
