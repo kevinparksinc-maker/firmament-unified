@@ -114,3 +114,6 @@
 - [x] Map the supplied Frawley L1/L10 versus L7/L4 method and Tajika/Prasna method against the current sports cluster engine, identifying overlap, conflict, and inactive assumptions.
 - [ ] Define two separately selectable and versioned sports rulesets with explicit chart type, house system, team-mapping rule, permitted planets, source data, and abstention requirements; do not merge their point systems.
 - [ ] Specify verifiable inputs and separate historical holdout protocols for cusp-proximity, Moon-next-aspect, node contact, Tajika application, Graha Yuddha latitude, and any future Kot Chakra module before implementation.
+- [x] Map the supplied KP horary-seed/Placidus/L1-L7/6th-and-11th-CSL blueprint against the active KP layer, including its current numeric-cusp and equal-house assumptions.
+- [ ] Define an isolated KP sports ruleset contract with explicit seed provenance, location, Placidus cusp generator, selected ayanamsha/zodiac convention, 249-sub mapping source, four-step significator trace, and retrograde data.
+- [ ] Add KP-specific input-completeness gates and test fixtures for 6th/11th cuspal sub-lord hierarchy, star-lord significations, retrograde filters, conflict/tie outcomes, and no-call conditions before scoring is expanded.
