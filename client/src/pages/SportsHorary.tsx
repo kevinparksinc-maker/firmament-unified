@@ -84,6 +84,22 @@ const MAJOR_CITIES = {
   "Salt Lake City": { lat: 40.7608, lon: -111.891 },
 };
 
+const normalizeLongitude = (value: number) => ((value % 360) + 360) % 360;
+const ordinalHouse = (house: number) => `${house}${house === 1 ? "st" : house === 2 ? "nd" : house === 3 ? "rd" : "th"}`;
+const equalHouseFromAscendant = (longitude: number, ascendant: number) => Math.floor(normalizeLongitude(longitude - ascendant) / 30) + 1;
+
+function formatClusterEqualHouseChart(planets: any[], ascendant: number): string {
+  const asc = normalizeLongitude(ascendant);
+  return [
+    `Cluster calculation basis: Equal 30° houses anchored at Asc ${asc.toFixed(2)}°.`,
+    ...planets.map((planet: any) => {
+      const longitude = normalizeLongitude(planet.eclipticLon ?? 0);
+      const house = equalHouseFromAscendant(longitude, asc);
+      return `${planet.name}: ${Number(planet.degreeInSign ?? planet.degree ?? 0).toFixed(2)}° ${planet.sign}, ${ordinalHouse(house)} house | raw longitude ${longitude.toFixed(4)}°`;
+    }),
+  ].join("\n");
+}
+
 type Verdict = "Favorite" | "Challenger" | "Even";
 
 type LayerVote = {
@@ -656,14 +672,19 @@ export default function SportsHorary() {
       // Store the full chart data for territorial control
       setCalculatedChart(data);
 
-      // Use enriched text (with nakshatras, decans, fixed stars) if available, otherwise fall back to basic format
-      const chartText = data.enrichedText || Object.entries(data.planets)
-        .map(([planet, info]: [string, any]) => {
-          const house = info.house ? `, ${info.house}th house` : "";
-          const retrograde = info.retrograde ? " Rx" : "";
-          return `${planet}: ${info.degree.toFixed(2)}° ${info.sign}${house}${retrograde}`;
-        })
-        .join("\n");
+      // Cluster/Territorial/KP uses continuous Equal Houses anchored at the
+      // exact Ascendant. Do not pass the ephemeris Whole Sign labels through
+      // as if they were Cluster inputs; its server contract recalculates the
+      // same Equal Houses from these raw longitudes.
+      const chartText = Array.isArray(data.planets) && typeof data.houses?.ascendant === "number"
+        ? formatClusterEqualHouseChart(data.planets, data.houses.ascendant)
+        : Object.entries(data.planets)
+          .map(([planet, info]: [string, any]) => {
+            const house = info.house ? `, ${info.house}th house` : "";
+            const retrograde = info.retrograde ? " Rx" : "";
+            return `${planet}: ${info.degree.toFixed(2)}° ${info.sign}${house}${retrograde}`;
+          })
+          .join("\n");
       setTransitInput(chartText);
     },
     onError: err => {
@@ -1027,7 +1048,7 @@ export default function SportsHorary() {
           </TabsList>
           <p className="mt-2 text-xs opacity-65">
             {sportsMethod === "cluster"
-              ? "Current Cluster/Territorial model: each active layer makes its own choice and eligible choices are counted."
+              ? "Current Cluster/Territorial model: tropical longitudes are assigned to continuous 30° Equal Houses from the exact Ascendant; each active layer then makes its own choice and eligible choices are counted."
               : sportsMethod === "frawley"
                 ? "Frawley event chart: real start and exact venue, Placidus houses, four significators, Moon completion, and no blended score."
                 : sportsMethod === "tajika-prasna"
@@ -1149,6 +1170,9 @@ export default function SportsHorary() {
         </div>
 
         {sportsMethod === "cluster" ? <>
+          <p className="mb-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs text-muted-foreground">
+            <strong className="text-foreground">Declared Cluster house basis:</strong> Equal 30° houses anchored at the displayed Ascendant. The event calculator may also expose Whole Sign labels for other chart views, but Cluster/Territorial/KP, Lots, and its layer-vote scorecard recalculate from the exact Ascendant and do not use those labels.
+          </p>
           <button
             onClick={handleCalculateChart}
             disabled={calculateChart.isPending || !eventDate}
@@ -1176,6 +1200,38 @@ export default function SportsHorary() {
             resize: "vertical",
           }}
           />
+          {Array.isArray(calculatedChart?.planets) && typeof calculatedChart?.houses?.ascendant === "number" && <section className="mb-4 overflow-hidden rounded-lg border border-primary/30 bg-card/70">
+            <div className="border-b border-primary/20 bg-primary/5 p-3">
+              <h2 className="text-sm font-semibold">Cluster house-assignment audit</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Territorial Control, KP, Lots, and layer votes use the <strong className="text-foreground">Cluster Equal House</strong> column: twelve continuous 30° sectors from the exact Ascendant. The ephemeris Whole Sign label is visible only as a separately named reference and is not scored by Cluster.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[680px] text-left text-xs">
+                <thead className="bg-muted/45 text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Point</th>
+                    <th className="px-3 py-2 font-medium">Raw longitude</th>
+                    <th className="px-3 py-2 font-medium">Sign placement</th>
+                    <th className="px-3 py-2 font-medium">Cluster Equal House</th>
+                    <th className="px-3 py-2 font-medium">Ephemeris Whole Sign reference</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {calculatedChart.planets.map((planet: any) => {
+                    const rawLongitude = normalizeLongitude(planet.eclipticLon ?? 0);
+                    const clusterHouse = equalHouseFromAscendant(rawLongitude, calculatedChart.houses.ascendant);
+                    return <tr key={planet.name} className="border-t border-border/60">
+                      <td className="px-3 py-2 font-medium">{planet.name}</td>
+                      <td className="px-3 py-2 font-mono">{rawLongitude.toFixed(4)}°</td>
+                      <td className="px-3 py-2">{Number(planet.degreeInSign ?? planet.degree ?? 0).toFixed(2)}° {planet.sign}</td>
+                      <td className="px-3 py-2 font-semibold text-primary">H{clusterHouse}</td>
+                      <td className="px-3 py-2 text-muted-foreground">H{planet.house ?? "—"} — reference only</td>
+                    </tr>;
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>}
         </> : <p className="mb-4 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">The selected method calculates its own named Placidus event chart when you submit a question. The manual Cluster/Territorial placement box is intentionally excluded.</p>}
 
         {(result || eventMethodResult || panchangaResult || godAgentResult) && (

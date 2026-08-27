@@ -18,7 +18,7 @@ Every Sports Horary simulation must display its calculation path before, or alon
 
 | Method | Evidence shown in the simulation | Scoring and conclusion boundary |
 |---|---|---|
-| Cluster / Layer Vote | User-entered placements, per-layer A/B points, each layer’s independent A/B/tie/abstain choice, raw totals, and majority-of-eligible-votes scorecard. | The public result counts eligible layer choices. Raw points are diagnostic only. Manual placements are not comparable to strict event-chart methods. |
+| Cluster / Layer Vote | Raw planet longitudes, exact Ascendant, the **Cluster Equal House** assignment for every placement, separately labelled ephemeris Whole Sign reference labels when available, per-layer A/B points, each layer’s independent A/B/tie/abstain choice, raw totals, and majority-of-eligible-votes scorecard. | Cluster/Territorial/KP/Lots use continuous 30° Equal Houses anchored at the supplied exact Ascendant. Ephemeris Whole Sign labels are reference-only and cannot enter Cluster scoring. The public result counts eligible layer choices; raw points are diagnostic only. Manual placements are not comparable to strict event-chart methods. |
 | Frawley Event | All seven traditional event planets, all twelve Placidus cusps, L1/L10/L7/L4 significators, angular evidence, declared orb/search settings, every qualifying Moon candidate, final permitted Moon candidate, combustion/node supporting checks, and conflicts. | Only the permitted final Moon perfection to an unshared four-significator target produces a directional event result. Angular and supporting evidence remain visible without silently overriding that rule. |
 | Tajika / Prasna | All seven traditional event planets, all twelve Placidus cusps, four significators, source/relative-house/orb settings, direct side links, all Itthashala/Muthashila and Eesaphala records, Nakta/Yamaya bridges, Kamboola, Graha Yuddha, and conflicts. | The predeclared Tajika link/conflict policy determines the result. Graha Yuddha is supporting context, not an undisclosed override. |
 | Panchanga / Team Archetype | Exact sunrise and Vara, tropical Sun/Moon longitudes, tithi, nakshatra, karana, nitya yoga, coordinate convention, both team profiles, profile evidence notes/sources/dates, each compatibility row, totals, and profile/no-call failures. | Only current, source-backed user-entered profiles are eligible. Panchanga’s `calculated-tropical-not-scored` elements stay visible but cannot manufacture a result. |
@@ -28,6 +28,8 @@ Every Sports Horary simulation must display its calculation path before, or alon
 ## Implementation Boundary
 
 The interface may reveal previously hidden **returned** calculations. It must not recalculate a second chart in the browser, add a new implicit scoring weight, use an observed result as input, or translate a method’s no-call into an underdog selection. Any new technique—such as a distinct topocentric directional rule—requires a separate version, source basis, tests, and historical holdout before it can enter a conclusion.
+
+For the legacy Cluster route, the client displays the server-returned raw longitudes and derives an Equal House audit label only for inspection. The server remains the calculation authority: it independently reassigns every placement from the same raw longitude and supplied Ascendant before it computes Territorial, KP, Lots, or a layer vote. A Whole Sign label returned by the ephemeris may never be used as a fallback scored house in this route.
 
 ## Interface Verification Record
 

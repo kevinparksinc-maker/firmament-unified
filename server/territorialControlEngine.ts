@@ -361,10 +361,11 @@ export function formatTerritorialReport(
   // that ruler is actually sitting right now.
   if (result.ascendant !== undefined) {
     const ascSignIdx = Math.floor(((result.ascendant % 360) + 360) % 360 / 30);
-    const ascDeg = ((result.ascendant % 360) + 360) % 360 % 30;
+    const ascDeg = ((result.ascendant % 360) + 360) % 30;
     lines.push(`▌ ASCENDANT: ${ascDeg.toFixed(2)}° ${["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"][ascSignIdx]}`);
+    lines.push("▌ HOUSE BASIS: Equal 30° houses anchored at this exact Ascendant");
   } else {
-    lines.push("▌ ASCENDANT: not available — house lords and lots could not be computed");
+    lines.push("▌ ASCENDANT: not available — house lords and lots could not be computed; no house basis is declared");
   }
   lines.push("");
 

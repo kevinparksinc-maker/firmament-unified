@@ -45,7 +45,7 @@ The calculations below used the frozen 09:00 Asia/Tokyo calibration instant. The
 | Tajika / Prasna | **No decisive completion — no-call** | No qualifying direct L1–L10 or L7–L4 completion. Two Eesaphala separations; no Nakta/Yamaya bridges; no Kamboola; Venus/Saturn conjunction recorded as supporting Graha Yuddha context. | No directional claim; therefore it neither selected nor rejected the observed winner. |
 | God ↔ Agent Flow | **Neutral / no-call** | God View tied at 1 ASC / 1 DSC / 5 quadrature. Agent View was ASC family 6, DSC family 1, neutral 0. Synthesis remained neutral because God had no direction. | No directional claim; therefore it neither selected nor rejected the observed winner. |
 | Panchanga / Team Archetype | **Not run — profile gate** | Historical source-backed team archetype profiles were not supplied. The live Panchanga calendar portion is eligible, but compatibility must abstain rather than fabricate profiles. | Correct no-fabrication behavior. |
-| Cluster / Layer Vote | **Tyson / Side A — separately reported legacy result** | The current legacy compatibility route was reproduced from a live ephemeris chart constructed at the frozen calibration instant. Territorial chose A (53.81 vs −14.63); KP Stellar chose A (32.50 vs 2.50); the visible layer-vote result was A 6, B 1, with 7 ties. | Did not match the observed Side B win. This manual-chart compatibility result remains excluded from the strict-method ledger. |
+| Cluster / Layer Vote | **Tyson / Side A — separately reported legacy result** | The current legacy compatibility route was reproduced from a live ephemeris chart constructed at the frozen calibration instant. It uses declared Equal Houses from the exact Ascendant: Territorial chose A (42.56 vs −18.38); KP Stellar chose A (27.00 vs 3.50); the visible layer-vote result was A 5, B 2, with 7 ties. | Did not match the observed Side B win. This manual-chart compatibility result remains excluded from the strict-method ledger. |
 
 ## Visible Audit Verification
 
@@ -55,19 +55,24 @@ The God–Agent panel additionally displayed its raw God RA/declination sectors,
 
 ## Legacy Cluster / Territorial / KP Reproduction
 
-After the strict-method review, the legacy Cluster compatibility path was also rerun from the same declared calibration instant. The event chart was first produced by `ephemeris.calculate`, then its pre-event placements, Ascendant, and equal-house cusps were supplied to the existing `sportsHorary.askWithChart` route. Neither the observed winner nor any post-fight fact entered this request.
+After the strict-method review, the legacy Cluster compatibility path was also rerun from the same declared calibration instant. The event chart was first produced by `ephemeris.calculate`, then its pre-event placements, Ascendant, and Equal House cusps were supplied to the existing `sportsHorary.askWithChart` route. Neither the observed winner nor any post-fight fact entered this request.
 
-| Legacy audit field | Standard map | 180° inverse audit |
+The first audit exposed a material house-system mismatch. The ephemeris rows carried Whole Sign labels, while the legacy Cluster builder simultaneously derived house lords and Lots from continuous 30° Equal Houses anchored at the exact Ascendant. For example, 8.98° Capricorn appeared as Whole Sign H10 but belongs to Equal House H9 from a 16.55° Aries Ascendant. The old `placement.house ?? equalHouseFromLongitude` fallback allowed the Whole Sign label to control some legacy layers. That output is superseded below and is not a valid Tyson–Douglas result.
+
+The correction preserves each raw longitude, explicitly reassigns every planet from the exact Ascendant before Territorial Control, KP, Lots, or any Cluster vote runs, and displays both values in the UI. The Whole Sign column remains available as a labelled ephemeris reference only; it is not a scored Cluster input.
+
+| Legacy audit field | Standard map, corrected Equal House basis | 180° inverse audit, corrected Equal House basis |
 |---|---:|---:|
 | Public Cluster result | Favorite / Side A (Tyson) | Favorite / Side A (Tyson) |
-| Territorial Control | A 53.81; B −14.63 | A 35.24; B −32.40 |
-| KP Stellar | A 32.50; B 2.50 | A 25.50; B 8.00 |
-| Eligible layer choices | A 6; B 1; ties 7 | A 5; B 2; ties 7 |
-| Only Side B layer in the standard result | Chart-wide Aspects | Chart-wide Aspects and Translation of Light |
+| Territorial Control layer vote | A 42.56; B −18.38 | A 35.24; B −32.40 |
+| KP Stellar layer vote | A 27.00; B 3.50 | A 25.50; B 8.00 |
+| Eligible layer choices | A 5; B 2; ties 7 | A 5; B 2; ties 7 |
+| Side B layers in the standard result | Lunar Flow; Chart-wide Aspects | Chart-wide Aspects; Translation of Light |
+| Detailed Territorial report (separate additive scale) | A +16.75; B −3.56 | A −8.88; B −15.69 |
 
-This confirms that the **current reproducible legacy code does not select Douglas** for this fixed record. The repository history contains no saved Tyson–Douglas payload or committed result showing Territorial or KP selecting Douglas. The `layer-vote-v1` change introduced an aggregate-vote decision boundary, but the preceding legacy version already used the same raw Territorial/KP values and would also have selected Side A from its positive raw margin. A remembered Douglas-side output therefore cannot be treated as evidence until its exact timestamp, manual placements, Ascendant/cusps, orientation, code revision, and full layer record are supplied and rerun.
+This corrected reproduction still does **not select Douglas** for this fixed record. It is less lopsided than the superseded mixed-house run, changing from 6–1 to 5–2 eligible layer choices, but it remains a Tyson/Side A output. The repository history contains no saved Tyson–Douglas payload or committed result showing Territorial or KP selecting Douglas. A remembered Douglas-side output therefore cannot be treated as evidence until its exact timestamp, manual placements, Ascendant/cusps, orientation, code revision, and full layer record are supplied and rerun.
 
-The legacy route also uses its own **equal-house, parsed-placement compatibility chart**, not the strict tropical-Placidus event chart used by Frawley, Tajika/Prasna, and the Agent receiver. That difference is documented rather than hidden; it is another reason not to pool the results.
+The legacy route now has an explicit **Equal House compatibility contract** that remains separate from the strict tropical-Placidus event charts used by Frawley, Tajika/Prasna, and the Agent receiver. The different house systems are visibly named and must not be pooled.
 
 ## References
 

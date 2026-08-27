@@ -66,6 +66,23 @@ function getHouseFromLon(
   return 1;
 }
 
+/**
+ * The legacy Cluster method accepts an explicit Ascendant and continuous 30°
+ * Equal House cusps. Normalize every supplied placement against that same
+ * cusp set so ephemeris Whole Sign labels cannot leak into Territorial, KP,
+ * Lot, or layer-vote calculations.
+ */
+export function assignEqualHousesToChart(chart: Chart, ascendant?: number): Chart {
+  if (ascendant === undefined) return chart;
+  const cusps = buildEqualHouseCusps(ascendant);
+  return Object.fromEntries(
+    Object.entries(chart).map(([planetName, placement]) => {
+      const eclipticLon = placement.eclipticLon ?? (SIGN_ORDER.indexOf(placement.sign) * 30 + placement.degree);
+      return [planetName, { ...placement, house: getHouseFromLon(eclipticLon, cusps) }];
+    }),
+  );
+}
+
 // Aspects layer in masterPredictionEngine.ts was always receiving [] because
 // nothing computed real aspects here — this fixes that. Aspect TYPE is
 // computed from real angular separation; "applying" is NOT true motion-based
@@ -128,6 +145,7 @@ export function buildChartData(chart: Chart, ascendant?: number): ChartData {
   const planetsInHouses: ChartData["planetsInHouses"] = [];
   const planetLookup: Record<string, SportsHoraryPlacement> = {};
   const cusps = ascendant !== undefined ? buildEqualHouseCusps(ascendant) : undefined;
+  const calculationChart = assignEqualHousesToChart(chart, ascendant);
 
   // Compute absolute house cusp longitudes once, reuse for lots and downstream layers (KP, etc.)
   const houseCuspLons: number[] | undefined = cusps
@@ -137,7 +155,7 @@ export function buildChartData(chart: Chart, ascendant?: number): ChartData {
       })
     : undefined;
 
-  for (const [planetName, placement] of Object.entries(chart)) {
+  for (const [planetName, placement] of Object.entries(calculationChart)) {
     const eclipticLon = placement.eclipticLon ?? (SIGN_ORDER.indexOf(placement.sign) * 30 + placement.degree);
     const house = placement.house ?? (cusps ? getHouseFromLon(eclipticLon, cusps) : 1);
 
@@ -189,7 +207,7 @@ export function buildChartData(chart: Chart, ascendant?: number): ChartData {
     const cuspsMap = buildEqualHouseCusps(ascendant);
     const houseCusps = Object.values(cuspsMap).map(c => (SIGN_ORDER.indexOf(c.sign) * 30) + c.degree);
 
-    const canonicalLots = calculateCanonicalArabicLots(chart, ascendant, night, houseCusps);
+    const canonicalLots = calculateCanonicalArabicLots(calculationChart, ascendant, night, houseCusps);
     lots = canonicalLots.map(lot => ({
       name: lot.name,
       house: lot.house,
@@ -205,7 +223,7 @@ export function buildChartData(chart: Chart, ascendant?: number): ChartData {
   // Void-of-course detection isn't implemented yet — flagged false rather than
   // silently faked as a specific state; the Moon layer still fires, just
   // without a VOC penalty until that detection exists.
-  const moonTone = detectMoonPhase(chart);
+  const moonTone = detectMoonPhase(calculationChart);
   const moonPhase: ChartData["moon"]["phase"] =
     moonTone?.includes("New Moon") ? "new" :
     moonTone?.includes("Full Moon") ? "full" :
@@ -222,7 +240,7 @@ export function buildChartData(chart: Chart, ascendant?: number): ChartData {
     moon: {
       phase: moonPhase,
       isVoidOfCourse: false,
-      nakshatra: chart.Moon ? getNakshatraAt(SIGN_ORDER.indexOf(chart.Moon.sign) * 30 + chart.Moon.degree).nakshatra.name : "Ashwini",
+      nakshatra: calculationChart.Moon ? getNakshatraAt(SIGN_ORDER.indexOf(calculationChart.Moon.sign) * 30 + calculationChart.Moon.degree).nakshatra.name : "Ashwini",
     },
   };
 }

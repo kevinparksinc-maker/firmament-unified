@@ -14,7 +14,7 @@ import {
   SIGN_RULERS,
   SIGN_ORDER,
 } from "./astroEngine";
-import { buildChartData } from "./sportsHoraryReading";
+import { assignEqualHousesToChart, buildChartData } from "./sportsHoraryReading";
 import { calculateFullPrediction, type ChartData, type ClusterConfig } from "./masterPredictionEngine";
 import { calculateTerritorialControl, formatTerritorialReport } from "./territorialControlEngine";
 
@@ -186,7 +186,8 @@ export async function sportsHoraryV2Layer(
     : mapOrientation === "inverse-180"
       ? normalizeDegree(standardAscendant + 180)
       : standardAscendant;
-  const chartData = buildChartData(chart, ascendant);
+  const calculationChart = assignEqualHousesToChart(chart, ascendant);
+  const chartData = buildChartData(calculationChart, ascendant);
 
   if (chartData.houseLords.length === 0) {
     return {
@@ -227,7 +228,7 @@ export async function sportsHoraryV2Layer(
   for (const hl of chartData.houseLords) {
     houseLordsMap.set(hl.house, hl.lordPlanet);
   }
-  const territorialResult = calculateTerritorialControl(chart, houseLordsMap, ascendant, chartData.houseAudit);
+  const territorialResult = calculateTerritorialControl(calculationChart, houseLordsMap, ascendant, chartData.houseAudit);
   const territorialControl = {
     sideATotal: territorialResult.sideATotal,
     sideBTotal: territorialResult.sideBTotal,
