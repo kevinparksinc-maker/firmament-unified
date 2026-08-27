@@ -26,12 +26,13 @@ export const GOD_AXIS_PLANETS = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jup
 export type GodAxisOrientation = "standard" | "inverse-180";
 export type GodSector = "god-asc" | "god-dsc" | "quadrature" | "boundary";
 export type GodPolarity = "asc" | "dsc" | "tie" | "abstain";
-export type AgentFamily = "agent-asc-family" | "agent-dsc-family";
+export type AgentFamily = "agent-asc-family" | "agent-dsc-family" | "agent-neutral";
 export type SynthesisState = "asc-convergence" | "dsc-convergence" | "cross-view-conflict" | "neutral";
 export type Strength = "none" | "weak" | "moderate" | "strong" | "extreme";
 
 const GOD_AXIS_BOUNDARIES_HOURS = [0, 3, 9, 12, 15, 21] as const;
 const AGENT_ASC_HOUSES = new Set([1, 3, 6, 10, 11]);
+const AGENT_DSC_HOUSES = new Set([4, 5, 7, 9, 12]);
 const BODY_BY_PLANET: Record<TraditionalPlanetName, unknown> = {
   Sun: Astronomy.Body.Sun,
   Moon: Astronomy.Body.Moon,
@@ -78,7 +79,7 @@ export type GodAxisResult = {
 export type GodAgentMatrixRow = GodAxisPoint & {
   agentHouse: number;
   agentFamily: AgentFamily;
-  flowCell: "asc-to-asc" | "asc-to-dsc" | "dsc-to-asc" | "dsc-to-dsc" | "neutral-to-asc" | "neutral-to-dsc";
+  flowCell: "asc-to-asc" | "asc-to-dsc" | "asc-to-neutral" | "dsc-to-asc" | "dsc-to-dsc" | "dsc-to-neutral" | "neutral-to-asc" | "neutral-to-dsc" | "neutral-to-neutral";
 };
 
 type MajorAspectName = "conjunction" | "sextile" | "square" | "trine" | "opposition";
@@ -142,8 +143,8 @@ export type GodAgentFlowResult = {
   topocentricObservation: GodAgentTopocentricObservation;
   agentView: {
     familyHouses: { asc: number[]; dsc: number[] };
-    counts: { asc: number; dsc: number; eligible: number };
-    polarity: Exclude<GodPolarity, "abstain">;
+    counts: { asc: number; dsc: number; neutral: number; eligible: number };
+    polarity: GodPolarity;
     strength: Strength;
     cusps: Array<{ house: number; longitude: number }>;
   };
@@ -163,7 +164,7 @@ export type GodAgentFlowResult = {
     state: SynthesisState;
     agreementCount: 0 | 2;
     godPolarity: GodPolarity;
-    agentPolarity: Exclude<GodPolarity, "abstain">;
+    agentPolarity: GodPolarity;
     godStrength: Strength;
     agentStrength: Strength;
     publicRule: string;
@@ -301,9 +302,9 @@ function houseForLongitude(longitude: number, cusps: number[]): number {
 }
 
 function flowCell(sector: GodSector, family: AgentFamily): GodAgentMatrixRow["flowCell"] {
-  if (sector === "god-asc") return family === "agent-asc-family" ? "asc-to-asc" : "asc-to-dsc";
-  if (sector === "god-dsc") return family === "agent-asc-family" ? "dsc-to-asc" : "dsc-to-dsc";
-  return family === "agent-asc-family" ? "neutral-to-asc" : "neutral-to-dsc";
+  if (sector === "god-asc") return family === "agent-asc-family" ? "asc-to-asc" : family === "agent-dsc-family" ? "asc-to-dsc" : "asc-to-neutral";
+  if (sector === "god-dsc") return family === "agent-asc-family" ? "dsc-to-asc" : family === "agent-dsc-family" ? "dsc-to-dsc" : "dsc-to-neutral";
+  return family === "agent-asc-family" ? "neutral-to-asc" : family === "agent-dsc-family" ? "neutral-to-dsc" : "neutral-to-neutral";
 }
 
 const MAJOR_ASPECTS: Array<{ type: MajorAspectName; exactAngle: number }> = [
@@ -345,13 +346,20 @@ function detectSecondaryAspects(rows: GodAgentMatrixRow[], agentLongitudes: Map<
   return aspects;
 }
 
-function agentPolarityFromCounts(asc: number, dsc: number): Exclude<GodPolarity, "abstain"> {
+export function classifyAgentFamily(house: number): AgentFamily {
+  if (AGENT_ASC_HOUSES.has(house)) return "agent-asc-family";
+  if (AGENT_DSC_HOUSES.has(house)) return "agent-dsc-family";
+  return "agent-neutral";
+}
+
+function agentPolarityFromCounts(asc: number, dsc: number): GodPolarity {
+  if (asc + dsc === 0) return "abstain";
   if (asc > dsc) return "asc";
   if (dsc > asc) return "dsc";
   return "tie";
 }
 
-function synthesisFor(god: GodAxisResult, agentPolarity: Exclude<GodPolarity, "abstain">, agentStrength: Strength): GodAgentFlowResult["synthesis"] {
+function synthesisFor(god: GodAxisResult, agentPolarity: GodPolarity, agentStrength: Strength): GodAgentFlowResult["synthesis"] {
   if (god.polarity === "asc" && agentPolarity === "asc") {
     return { state: "asc-convergence", agreementCount: 2, godPolarity: god.polarity, agentPolarity, godStrength: god.strength, agentStrength, publicRule: "Both independent views favor ASC polarity. Agent View may translate local ASC to Side A context only after this result is fixed." };
   }
@@ -374,29 +382,34 @@ export function calculateGodAgentFamilyFlow(input: GodAgentFlowInput): GodAgentF
     const agentPlanet = agentByName.get(point.planet);
     if (!agentPlanet) throw new Error(`Missing ${point.planet} from Agent event chart.`);
     const agentHouse = houseForLongitude(agentPlanet.longitude, agentChart.cusps);
-    const agentFamily: AgentFamily = AGENT_ASC_HOUSES.has(agentHouse) ? "agent-asc-family" : "agent-dsc-family";
+    const agentFamily = classifyAgentFamily(agentHouse);
     return { ...point, agentHouse, agentFamily, flowCell: flowCell(point.sector, agentFamily) };
   });
   const agentCounts = {
     asc: rows.filter(row => row.agentFamily === "agent-asc-family").length,
     dsc: rows.filter(row => row.agentFamily === "agent-dsc-family").length,
-    eligible: rows.length,
+    neutral: rows.filter(row => row.agentFamily === "agent-neutral").length,
+    eligible: rows.filter(row => row.agentFamily !== "agent-neutral").length,
   };
   const agentPolarity = agentPolarityFromCounts(agentCounts.asc, agentCounts.dsc);
   const agentStrength = strengthForMargin(Math.abs(agentCounts.asc - agentCounts.dsc));
   const cells: GodAgentFlowResult["familyFlow"]["cells"] = {
     "asc-to-asc": rows.filter(row => row.flowCell === "asc-to-asc").length,
     "asc-to-dsc": rows.filter(row => row.flowCell === "asc-to-dsc").length,
+    "asc-to-neutral": rows.filter(row => row.flowCell === "asc-to-neutral").length,
     "dsc-to-asc": rows.filter(row => row.flowCell === "dsc-to-asc").length,
     "dsc-to-dsc": rows.filter(row => row.flowCell === "dsc-to-dsc").length,
+    "dsc-to-neutral": rows.filter(row => row.flowCell === "dsc-to-neutral").length,
     "neutral-to-asc": rows.filter(row => row.flowCell === "neutral-to-asc").length,
     "neutral-to-dsc": rows.filter(row => row.flowCell === "neutral-to-dsc").length,
+    "neutral-to-neutral": rows.filter(row => row.flowCell === "neutral-to-neutral").length,
   };
   const secondaryAspects = detectSecondaryAspects(rows, new Map(agentChart.planets.map(planet => [planet.name, planet.longitude])));
   const synthesis = synthesisFor(godView, agentPolarity, agentStrength);
   const conflicts: string[] = [];
   if (godView.polarity === "tie" || godView.polarity === "abstain") conflicts.push("God View has no directional polarity; it remains a no-call input to synthesis.");
   if (agentPolarity === "tie") conflicts.push("Agent family count is tied; it remains a no-call input to synthesis.");
+  if (agentPolarity === "abstain") conflicts.push("Every Agent placement fell outside the declared ASC/DSC house families; it remains a no-call input to synthesis.");
   if (synthesis.state === "cross-view-conflict") conflicts.push("God and Agent polarity disagree. Do not force a winner or blend their margins.");
   if (orientation === "inverse-180") conflicts.push("Inverse God-axis output is the mechanical 12-hour complement of the symmetric standard axis and is audit-only, not independent confirming evidence.");
 
@@ -431,7 +444,7 @@ export function calculateGodAgentFamilyFlow(input: GodAgentFlowInput): GodAgentF
     godView,
     topocentricObservation,
     agentView: {
-      familyHouses: { asc: [...AGENT_ASC_HOUSES], dsc: [7, 9, 12, 4, 5] },
+      familyHouses: { asc: [...AGENT_ASC_HOUSES], dsc: [...AGENT_DSC_HOUSES] },
       counts: agentCounts,
       polarity: agentPolarity,
       strength: agentStrength,

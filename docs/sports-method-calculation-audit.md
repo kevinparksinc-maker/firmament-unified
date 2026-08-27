@@ -16,9 +16,9 @@ This audit reconciles the active Sports Horary method registry, public router pr
 
 ## God–Agent Coordinate Finding
 
-The August 22–26 NPB audit contained 20 changing event records. The God Sun RA ranged from 10.0611h to 10.3164h, the God Moon RA ranged from 17.3761h to 20.9865h, and topocentric Sun altitude ranged from 2.61° to 66.16°. Agent Placidus cusps also changed substantially by venue and event time. Nevertheless, the coarse frozen classifications were DSC for God, DSC for Agent, and DSC convergence for all 20 records.
+The August 22–26 NPB audit contained 20 changing event records. The God Sun RA ranged from 10.0611h to 10.3164h, the God Moon RA ranged from 17.3761h to 20.9865h, and stadium-local Sun elevation ranged from 2.61° to 66.16°. Agent Placidus cusps also changed substantially by venue and event time. After correcting the H2/H8 family defect, God was DSC in all 20 records, while Agent was DSC in 18 and tied in 2; the corrected synthesis therefore yielded 18 DSC convergences and 2 neutral no-calls.
 
-This is a **persistent classification** finding, not an identical-sky finding. It does not demonstrate an error in the separate KP, Lots, or Nakshatra paths, because none of those paths is an input to God–Agent Flow.
+This is a **persistent God classification with some local-Agent variation** finding, not an identical-sky finding. It does not demonstrate an error in the separate KP, Lots, or Nakshatra paths, because none of those paths is an input to God–Agent Flow. The earlier record claiming 20 DSC convergences was invalidated by the H2/H8 classifier defect and is superseded.
 
 ## Cross-Method Synthesis Boundary
 

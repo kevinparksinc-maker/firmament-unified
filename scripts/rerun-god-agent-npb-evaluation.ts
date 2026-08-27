@@ -76,6 +76,7 @@ const evaluatedGames = cohort.games.map(game => {
       godPolarity: result.godView.polarity,
       godPoints: result.godView.points,
       agentPolarity: result.agentView.polarity,
+      agentCounts: result.agentView.counts,
       agentCusps: result.agentView.cusps,
       agentRows: result.familyFlow.rows,
       topocentricObservation: result.topocentricObservation,
@@ -98,6 +99,23 @@ const marketBaseline = summarizeMarketUnderdogBaseline(evaluatedGames.map(record
   underdogDecimalOdds: record.game.underdog.decimalOdds,
 })));
 
+function outcomeSummary<T extends string>(key: (record: typeof evaluatedGames[number]) => T) {
+  return Object.fromEntries([...new Set(evaluatedGames.map(key))].sort().map(value => {
+    const records = evaluatedGames.filter(record => key(record) === value);
+    return [value, {
+      games: records.length,
+      underdogWins: records.filter(record => record.postCalculationOutcome.underdogWon).length,
+    }];
+  }));
+}
+
+const classifications = {
+  godPolarity: outcomeSummary(record => record.calculation.godPolarity),
+  agentPolarity: outcomeSummary(record => record.calculation.agentPolarity),
+  synthesisState: outcomeSummary(record => record.calculation.synthesisState),
+  publicOutcome: outcomeSummary(record => record.calculation.outcome),
+};
+
 console.log(JSON.stringify({
   cohort: {
     id: cohort.cohortId,
@@ -110,5 +128,6 @@ console.log(JSON.stringify({
   },
   summary,
   marketBaseline,
+  classifications,
   games: evaluatedGames,
 }, null, 2));

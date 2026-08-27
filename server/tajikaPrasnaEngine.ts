@@ -92,6 +92,10 @@ export type TajikaWar = {
   involvesPrincipalSignificator: boolean;
 };
 
+export type TajikaEventPlanetEvidence = EventPlanet & {
+  house: number;
+};
+
 export type TajikaPrasnaResult = {
   version: typeof TAJIKA_PRASNA_VERSION;
   orientation: TajikaOrientation;
@@ -119,6 +123,7 @@ export type TajikaPrasnaResult = {
     grahaYuddhaOrb: 1;
   };
   cusps: Array<{ house: number; longitude: number; sign: ZodiacSign }>;
+  planets: TajikaEventPlanetEvidence[];
   significators: TajikaSignificator[];
   sideALink: TajikaYoga | null;
   sideBLink: TajikaYoga | null;
@@ -167,6 +172,17 @@ function relativeRelation(first: EventPlanet, second: EventPlanet): {
 
 function aspectError(first: number, second: number, aspect: number): number {
   return Math.abs(shortestArc(first, second) - aspect);
+}
+
+function houseForLongitude(longitude: number, cusps: number[]): number {
+  for (let index = 0; index < cusps.length; index += 1) {
+    const start = cusps[index]!;
+    const end = cusps[(index + 1) % cusps.length]!;
+    const span = normalizeDegrees(end - start);
+    const offset = normalizeDegrees(longitude - start);
+    if (offset < span || Math.abs(offset - span) < 0.0001) return index + 1;
+  }
+  throw new Error("Unable to assign the live planet to a Placidus house.");
 }
 
 function refinePerfection(
@@ -274,6 +290,10 @@ export function calculateTajikaPrasnaEvent(input: TajikaPrasnaInput): TajikaPras
   const baseChart = calculatePlacidusEventChart(input);
   const cusps = baseChart.cusps.map(cusp => rotate(cusp, orientation));
   const planets = baseChart.planets.map(planet => transformedPlanet(planet, orientation));
+  const planetEvidence: TajikaEventPlanetEvidence[] = planets.map(planet => ({
+    ...planet,
+    house: houseForLongitude(planet.longitude, cusps),
+  }));
   const roleDefinitions: Array<{ role: TajikaRole; side: TajikaSide; cusp: 1 | 4 | 7 | 10 }> = [
     { role: "L1", side: "A", cusp: 1 }, { role: "L10", side: "A", cusp: 10 },
     { role: "L7", side: "B", cusp: 7 }, { role: "L4", side: "B", cusp: 4 },
@@ -409,6 +429,7 @@ export function calculateTajikaPrasnaEvent(input: TajikaPrasnaInput): TajikaPras
       grahaYuddhaOrb: 1,
     },
     cusps: cusps.map((longitude, index) => ({ house: index + 1, longitude, sign: signAt(longitude) })),
+    planets: planetEvidence,
     significators,
     sideALink,
     sideBLink,

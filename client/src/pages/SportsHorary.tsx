@@ -142,7 +142,9 @@ type EventMethodResult = {
     houseEngine: string;
     zodiac: string;
   };
+  settings?: Record<string, string | number | boolean | Record<string, number>>;
   cusps: Array<{ house: number; longitude: number; sign: string }>;
+  planets?: Array<{ name: string; longitude: number; sign: string; degreeInSign: number; house: number; speedDegreesPerDay: number; retrograde: boolean; eclipticLatitude: number; declination: number }>;
   significators: Array<{
     role: string;
     side: "A" | "B";
@@ -158,15 +160,16 @@ type EventMethodResult = {
     startSign: string;
     signExitUtcIso: string | null;
     conjunctionStopUtcIso: string | null;
-    candidates: Array<{ target: string; aspect: number; perfectionUtcIso: string; minutesFromStart: number; targetRoles: string[]; targetSides: string[] }>;
-    finalCandidate: { target: string; aspect: number; perfectionUtcIso: string; minutesFromStart: number; targetRoles: string[]; targetSides: string[] } | null;
+    candidates: Array<{ target: string; aspect: number; perfectionUtcIso: string; minutesFromStart: number; initialOrb: number; perfectionError: number; targetRoles: string[]; targetSides: string[] }>;
+    finalCandidate: { target: string; aspect: number; perfectionUtcIso: string; minutesFromStart: number; initialOrb: number; perfectionError: number; targetRoles: string[]; targetSides: string[] } | null;
   };
   sideALink?: { kind: string; first: string; second: string; relation: string; aspect: number; initialOrb: number; perfectionUtcIso: string | null } | null;
   sideBLink?: { kind: string; first: string; second: string; relation: string; aspect: number; initialOrb: number; perfectionUtcIso: string | null } | null;
-  separations?: Array<{ kind: string; first: string; second: string; reason: string }>;
+  separations?: Array<{ kind: string; first: string; second: string; aspect: number; initialOrb: number; permittedOrb: number; reason: string }>;
   bridges?: Array<{ kind: string; bridge: string; side: "A" | "B"; reason: string }>;
   kamboola?: Array<{ side: "A" | "B"; moonLink: { kind: string; first: string; second: string } }>;
   grahaYuddha?: Array<{ first: string; second: string; separation: number; winner: string; loser: string; involvesPrincipalSignificator: boolean }>;
+  angularEvidence?: Array<{ role: string; side: "A" | "B"; ruler: string; targetCusp: number; cuspLongitude: number; separation: number; thresholdClass: string; motion: string; projectedPerfectionHours: number | null }>;
   conflicts: string[];
 };
 
@@ -242,8 +245,8 @@ type GodAgentFlowResult = {
   };
   agentView: {
     familyHouses: { asc: number[]; dsc: number[] };
-    counts: { asc: number; dsc: number; eligible: number };
-    polarity: "asc" | "dsc" | "tie";
+    counts: { asc: number; dsc: number; neutral: number; eligible: number };
+    polarity: "asc" | "dsc" | "tie" | "abstain";
     strength: string;
     cusps: Array<{ house: number; longitude: number }>;
   };
@@ -448,6 +451,9 @@ function EventMethodAudit({ result }: { result: EventMethodResult }) {
   const linkLabel = (link: EventMethodResult["sideALink"]) => link
     ? `${link.kind}: ${link.first} → ${link.second} · ${link.relation} ${link.aspect}° · ${link.initialOrb.toFixed(2)}° orb`
     : "No qualifying direct completion link";
+  const settingValue = (value: NonNullable<EventMethodResult["settings"]>[string]) => typeof value === "object"
+    ? Object.entries(value).map(([key, entry]) => `${key}: ${entry}`).join(" · ")
+    : String(value);
 
   return (
     <section className="mb-5 rounded-lg border border-primary/40 bg-card p-4">
@@ -467,6 +473,14 @@ function EventMethodAudit({ result }: { result: EventMethodResult }) {
       </div>
       <p className="mt-3 text-xs text-muted-foreground">Venue: {result.event.venueName} · Favorite source: {result.event.favoriteSource} · House engine: {result.event.houseEngine}</p>
 
+      {result.settings && <details className="mt-4 rounded border border-border bg-muted/20 p-3 text-xs"><summary className="cursor-pointer font-semibold text-primary">Show declared method settings and thresholds</summary><dl className="mt-3 grid gap-2 sm:grid-cols-2">{Object.entries(result.settings).map(([key, value]) => <div key={key}><dt className="font-mono text-muted-foreground">{key}</dt><dd className="mt-1">{settingValue(value)}</dd></div>)}</dl></details>}
+
+      <details className="mt-4 rounded border border-border bg-muted/20 p-3" open>
+        <summary className="cursor-pointer text-sm font-semibold text-primary">Show all seven live traditional planets and Placidus houses</summary>
+        <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[780px] text-left text-xs"><thead className="border-b border-border text-muted-foreground"><tr><th className="pb-2 pr-3">Planet</th><th className="pb-2 pr-3">Tropical longitude</th><th className="pb-2 pr-3">Local house</th><th className="pb-2 pr-3">Motion</th><th className="pb-2 pr-3">Ecliptic latitude</th><th className="pb-2">Declination</th></tr></thead><tbody>{result.planets?.map(planet => <tr key={planet.name} className="border-b border-border/60 last:border-0"><td className="py-2 pr-3 font-semibold">{planet.name}</td><td className="py-2 pr-3 font-mono">{planet.sign} {planet.degreeInSign.toFixed(2)}° ({planet.longitude.toFixed(2)}°)</td><td className="py-2 pr-3">H{planet.house}</td><td className="py-2 pr-3">{planet.speedDegreesPerDay.toFixed(3)}°/day {planet.retrograde ? "Rx" : "direct"}</td><td className="py-2 pr-3 font-mono">{planet.eclipticLatitude.toFixed(3)}°</td><td className="py-2 font-mono">{planet.declination.toFixed(3)}°</td></tr>)}</tbody></table></div>
+        <p className="mt-3 text-xs text-muted-foreground">These are the transformed live event-chart positions used by this method. The table reveals evidence; it does not add a second score.</p>
+      </details>
+
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-xs">
           <thead className="border-b border-border text-muted-foreground"><tr><th className="pb-2 pr-3">Role</th><th className="pb-2 pr-3">Team side</th><th className="pb-2 pr-3">Cusp</th><th className="pb-2 pr-3">Ruler</th><th className="pb-2 pr-3">Planet longitude</th><th className="pb-2">Motion</th></tr></thead>
@@ -479,6 +493,7 @@ function EventMethodAudit({ result }: { result: EventMethodResult }) {
           <strong>Frawley Moon completion</strong>
           <p className="mt-1 text-muted-foreground">Moon begins at {result.moon.startSign} {result.moon.startLongitude.toFixed(2)}°. {result.moon.finalCandidate ? `Final qualifying aspect: ${result.moon.finalCandidate.aspect}° to ${result.moon.finalCandidate.target} in ${result.moon.finalCandidate.minutesFromStart.toFixed(1)} minutes.` : "No qualifying final aspect before sign exit."}</p>
           <p className="mt-1 text-xs text-muted-foreground">Candidates: {result.moon.candidates.length} · Moon sign exit: {result.moon.signExitUtcIso ?? "not found"} · Conjunction stop: {result.moon.conjunctionStopUtcIso ?? "none"}</p>
+          <details className="mt-3 text-xs"><summary className="cursor-pointer font-semibold text-primary">Show every qualifying Moon aspect / alignment candidate</summary><div className="mt-2 overflow-x-auto"><table className="w-full min-w-[720px] text-left"><thead className="border-b border-border text-muted-foreground"><tr><th className="pb-2 pr-2">Target</th><th className="pb-2 pr-2">Aspect</th><th className="pb-2 pr-2">Initial orb</th><th className="pb-2 pr-2">Perfection UTC</th><th className="pb-2">Significator role / side</th></tr></thead><tbody>{result.moon.candidates.map(candidate => <tr key={`${candidate.target}-${candidate.aspect}-${candidate.perfectionUtcIso}`} className="border-b border-border/60 last:border-0"><td className="py-2 pr-2 font-semibold">{candidate.target}</td><td className="py-2 pr-2">{candidate.aspect}°</td><td className="py-2 pr-2 font-mono">{candidate.initialOrb.toFixed(2)}°</td><td className="py-2 pr-2 font-mono">{candidate.perfectionUtcIso} · {candidate.minutesFromStart.toFixed(1)} min</td><td className="py-2">{candidate.targetRoles.length ? `${candidate.targetRoles.join("/")} · Side ${candidate.targetSides.join("/")}` : "No four-significator role"}</td></tr>)}</tbody></table></div></details>
         </div>
       ) : (
         <div className="mt-4 grid gap-2 sm:grid-cols-2 text-sm">
@@ -488,6 +503,10 @@ function EventMethodAudit({ result }: { result: EventMethodResult }) {
           <div className="rounded border border-border bg-muted/20 p-3"><strong>Supporting yogas</strong><p className="mt-1 text-muted-foreground">{result.bridges?.length ?? 0} bridge(s), {result.kamboola?.length ?? 0} Kamboola catalyst(s), {result.grahaYuddha?.length ?? 0} Graha Yuddha record(s).</p></div>
         </div>
       )}
+
+      {result.angularEvidence && <details className="mt-4 rounded border border-border bg-muted/20 p-3 text-xs"><summary className="cursor-pointer font-semibold text-primary">Show Frawley angular evidence for every significator / key-cusp relation</summary><div className="mt-3 overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead className="border-b border-border text-muted-foreground"><tr><th className="pb-2 pr-2">Role / side</th><th className="pb-2 pr-2">Ruler</th><th className="pb-2 pr-2">Target cusp</th><th className="pb-2 pr-2">Separation</th><th className="pb-2 pr-2">Threshold</th><th className="pb-2">Motion / perfection</th></tr></thead><tbody>{result.angularEvidence.map(item => <tr key={`${item.role}-${item.targetCusp}`} className="border-b border-border/60 last:border-0"><td className="py-2 pr-2">{item.role} · Side {item.side}</td><td className="py-2 pr-2">{item.ruler}</td><td className="py-2 pr-2">H{item.targetCusp} · {item.cuspLongitude.toFixed(2)}°</td><td className="py-2 pr-2 font-mono">{item.separation.toFixed(2)}°</td><td className="py-2 pr-2">{item.thresholdClass}</td><td className="py-2">{item.motion}{item.projectedPerfectionHours === null ? "" : ` · ${item.projectedPerfectionHours.toFixed(2)}h`}</td></tr>)}</tbody></table></div></details>}
+
+      {!result.moon && <details className="mt-4 rounded border border-border bg-muted/20 p-3 text-xs"><summary className="cursor-pointer font-semibold text-primary">Show Tajika / Prasna yoga, separation, bridge, Kamboola, and Graha Yuddha records</summary><div className="mt-3 grid gap-3"><div><strong>Direct side links</strong><p className="mt-1 text-muted-foreground">Side A: {linkLabel(result.sideALink)}. Side B: {linkLabel(result.sideBLink)}.</p></div><div><strong>Eesaphala separations</strong><p className="mt-1 text-muted-foreground">{result.separations?.length ? result.separations.map(item => `${item.first} / ${item.second}: ${item.aspect}° · ${item.initialOrb.toFixed(2)}°/${item.permittedOrb.toFixed(2)}°`).join("; ") : "None recorded."}</p></div><div><strong>Nakta / Yamaya bridges</strong><p className="mt-1 text-muted-foreground">{result.bridges?.length ? result.bridges.map(item => `Side ${item.side} ${item.kind}: ${item.bridge}. ${item.reason}`).join(" ") : "None recorded."}</p></div><div><strong>Kamboola and Graha Yuddha</strong><p className="mt-1 text-muted-foreground">{result.kamboola?.length ? result.kamboola.map(item => `Side ${item.side}: Moon ${item.moonLink.kind} ${item.moonLink.first}/${item.moonLink.second}.`).join(" ") : "No Kamboola catalyst."} {result.grahaYuddha?.length ? result.grahaYuddha.map(item => `${item.first}/${item.second} ${item.separation.toFixed(2)}°; ${item.winner} over ${item.loser}; ${item.involvesPrincipalSignificator ? "principal significator involved" : "supporting only"}.`).join(" ") : "No Graha Yuddha record."}</p></div></div></details>}
 
       {result.conflicts.length > 0 && <p className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-200"><strong>Conflict / no-call evidence:</strong> {result.conflicts.join(" ")}</p>}
       <details className="mt-4 text-xs"><summary className="cursor-pointer font-semibold text-primary">Show all 12 raw Placidus cusps</summary><div className="mt-2 grid grid-cols-2 gap-1 sm:grid-cols-4">{result.cusps.map(cusp => <span key={cusp.house} className="rounded bg-muted/50 px-2 py-1">H{cusp.house}: {cusp.sign} {cusp.longitude.toFixed(2)}°</span>)}</div></details>
@@ -521,6 +540,7 @@ function PanchangaArchetypeAudit({ result }: { result: PanchangaArchetypeResult 
         <div className="rounded border border-border bg-muted/20 p-3"><strong>Karana</strong><p className="mt-1 text-muted-foreground">{result.panchanga.karana.name} · {result.panchanga.karana.class}</p><p className="mt-1 text-xs text-muted-foreground">Half-tithi index: {result.panchanga.karana.index + 1}</p></div>
         <div className="rounded border border-border bg-muted/20 p-3"><strong>Nitya Yoga</strong><p className="mt-1 text-muted-foreground">{result.panchanga.yoga.number}. {result.panchanga.yoga.name}</p><p className="mt-1 text-xs text-muted-foreground">{result.panchanga.yoga.progressPercent.toFixed(1)}% through yoga</p></div>
         <div className="rounded border border-border bg-muted/20 p-3"><strong>Coordinate convention</strong><p className="mt-1 text-muted-foreground">{result.panchanga.coordinateConvention}</p><p className="mt-1 text-xs text-muted-foreground">{result.panchanga.publicPsychology}</p></div>
+        <div className="rounded border border-border bg-muted/20 p-3"><strong>Solar / lunar positions</strong><p className="mt-1 text-muted-foreground">Sun {result.panchanga.sunLongitude.toFixed(3)}° · Moon {result.panchanga.moonLongitude.toFixed(3)}°</p><p className="mt-1 text-xs text-muted-foreground">These longitudes generate the displayed tithi, nakshatra, karana, and yoga.</p></div>
       </div>
 
       <div className="mt-4 overflow-x-auto">
@@ -529,6 +549,7 @@ function PanchangaArchetypeAudit({ result }: { result: PanchangaArchetypeResult 
           <tbody>{result.profiles.map(row => <tr key={row.side} className="border-b border-border/60 last:border-0 align-top"><td className="py-2 pr-3 font-semibold">{row.teamName}<span className="block font-normal text-muted-foreground">Side {row.side}</span></td><td className="py-2 pr-3">{row.profile.primaryArchetype}{row.profile.secondaryArchetype ? ` / ${row.profile.secondaryArchetype}` : ""}</td><td className="py-2 pr-3">{row.profile.studyWindow}<span className="block text-muted-foreground">{row.profile.effectiveDate} → {row.profile.validThroughDate}</span></td><td className="py-2 pr-3">{row.validation.valid ? row.compatibility.map(item => `${item.archetype}: ${item.score >= 0 ? "+" : ""}${item.score.toFixed(1)} (${item.reasons.join(" ")})`).join(" ") : row.validation.reasons.join(" ")}</td><td className="py-2 font-mono font-semibold">{row.total === null ? "No call" : row.total.toFixed(1)}</td></tr>)}</tbody>
         </table>
       </div>
+      <details className="mt-4 rounded border border-border bg-muted/20 p-3 text-xs"><summary className="cursor-pointer font-semibold text-primary">Show team-profile evidence, sources, and eligibility checks</summary><div className="mt-3 grid gap-3 sm:grid-cols-2">{result.profiles.map(row => <div key={`profile-${row.side}`} className="rounded border border-border/70 p-3"><strong>{row.teamName} · Side {row.side}</strong><p className="mt-2"><span className="text-muted-foreground">Study note:</span> {row.profile.evidenceNote}</p><p className="mt-2"><span className="text-muted-foreground">Sources:</span> {row.profile.sources.length ? row.profile.sources.join(" · ") : "No source recorded"}</p><p className="mt-2"><span className="text-muted-foreground">Validation:</span> {row.validation.valid ? "Eligible" : row.validation.reasons.join(" ")}</p></div>)}</div></details>
       <p className="mt-3 text-xs text-muted-foreground">Score difference: {result.scoreDifference === null ? "unavailable" : `${result.scoreDifference > 0 ? "+" : ""}${result.scoreDifference.toFixed(1)} (Side A − Side B)`}. This is transparent compatibility evidence only, not a calibrated probability.</p>
       {result.noCallReasons.length > 0 && <p className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-200"><strong>No-call evidence:</strong> {result.noCallReasons.join(" ")}</p>}
     </section>
@@ -556,7 +577,7 @@ function GodAgentFlowAudit({ result }: { result: GodAgentFlowResult }) {
 
       <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
         <div className="rounded bg-muted/50 p-2"><span className="block text-xs text-muted-foreground">God View — fixed pole axis</span><strong>{label(result.godView.polarity)} · {result.godView.strength}</strong><span className="mt-1 block font-mono text-xs text-muted-foreground">{result.godView.counts.asc} ASC / {result.godView.counts.dsc} DSC</span></div>
-        <div className="rounded bg-muted/50 p-2"><span className="block text-xs text-muted-foreground">Agent View — local receiver</span><strong>{label(result.agentView.polarity)} · {result.agentView.strength}</strong><span className="mt-1 block font-mono text-xs text-muted-foreground">{result.agentView.counts.asc} ASC family / {result.agentView.counts.dsc} DSC family</span></div>
+        <div className="rounded bg-muted/50 p-2"><span className="block text-xs text-muted-foreground">Agent View — local receiver</span><strong>{label(result.agentView.polarity)} · {result.agentView.strength}</strong><span className="mt-1 block font-mono text-xs text-muted-foreground">{result.agentView.counts.asc} ASC family / {result.agentView.counts.dsc} DSC family / {result.agentView.counts.neutral} neutral</span></div>
         <div className="rounded bg-muted/50 p-2"><span className="block text-xs text-muted-foreground">Synthesis — direction first</span><strong className={titleColor}>{result.synthesis.state.replaceAll("-", " ")}</strong><span className="mt-1 block font-mono text-xs text-muted-foreground">Agreement: {result.synthesis.agreementCount}/2</span></div>
       </div>
 
@@ -587,11 +608,11 @@ function GodAgentFlowAudit({ result }: { result: GodAgentFlowResult }) {
       </div>
       <div className="mt-4 rounded border border-sky-500/30 bg-sky-500/5 p-3">
         <div className="flex items-start justify-between gap-2 flex-wrap">
-          <div><strong className="text-sm">Topocentric compass observation</strong><p className="mt-1 text-xs text-muted-foreground">{result.topocentricObservation.referenceFrame}; observer {result.topocentricObservation.observer.latitude.toFixed(4)}°, {result.topocentricObservation.observer.longitude.toFixed(4)}°.</p></div>
+          <div><strong className="text-sm">Stadium-local compass coordinates</strong><p className="mt-1 text-xs text-muted-foreground">Local observer-coordinate readout for the verified stadium. Provenance: {result.topocentricObservation.referenceFrame}; observer {result.topocentricObservation.observer.latitude.toFixed(4)}°, {result.topocentricObservation.observer.longitude.toFixed(4)}°.</p></div>
           <span className="rounded border border-sky-500/30 px-2 py-1 font-mono text-[10px] uppercase text-muted-foreground">{result.topocentricObservation.status}</span>
         </div>
         <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-xs"><thead className="border-b border-border text-muted-foreground"><tr><th className="pb-2 pr-3">Planet</th><th className="pb-2 pr-3">Topocentric RA</th><th className="pb-2 pr-3">Declination</th><th className="pb-2 pr-3">Azimuth</th><th className="pb-2">Altitude</th></tr></thead><tbody>{result.topocentricObservation.points.map(point => <tr key={point.planet} className="border-b border-border/60 last:border-0"><td className="py-2 pr-3 font-semibold">{point.planet}</td><td className="py-2 pr-3 font-mono">{point.rightAscensionHours.toFixed(4)}h</td><td className="py-2 pr-3 font-mono">{point.declination.toFixed(3)}°</td><td className="py-2 pr-3 font-mono">{point.azimuth.toFixed(2)}°</td><td className="py-2 font-mono">{point.altitude.toFixed(2)}°</td></tr>)}</tbody></table></div>
-        <p className="mt-3 text-xs text-muted-foreground"><strong>Audit boundary:</strong> {result.topocentricObservation.note}</p>
+        <p className="mt-3 text-xs text-muted-foreground"><strong>Protocol boundary:</strong> {result.topocentricObservation.note} The Gleason/Zetetic Atlas remains a separate coordinate display and is never silently substituted for this Sports Horary method.</p>
       </div>
       <p className="mt-2 text-xs text-muted-foreground"><strong>Public rule:</strong> {result.synthesis.publicRule}</p>
       {result.conflicts.length > 0 && <p className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-200"><strong>Conflict / no-call evidence:</strong> {result.conflicts.join(" ")}</p>}

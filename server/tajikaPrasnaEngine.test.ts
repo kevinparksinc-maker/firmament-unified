@@ -21,6 +21,8 @@ describe("tajika-prasna-v1", () => {
     expect(result.event.houseSystem).toBe("Placidus");
     expect(result.event.eventUtcIso).toBe("2026-06-27T23:10:00.000Z");
     expect(result.cusps).toHaveLength(12);
+    expect(result.planets.map(item => item.name)).toEqual(["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"]);
+    expect(result.planets.every(item => item.house >= 1 && item.house <= 12)).toBe(true);
     expect(result.significators.map(item => item.role)).toEqual(["L1", "L10", "L7", "L4"]);
     expect(result.settings.perPlanetOrbs).toMatchObject({ Sun: 15, Moon: 12, Mars: 8, Mercury: 7, Jupiter: 9, Venus: 7, Saturn: 9 });
     expect(["side-a", "side-b", "no-call"]).toContain(result.outcome);

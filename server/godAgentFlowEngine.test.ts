@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateGodAgentFamilyFlow, calculateGodAxis } from "./godAgentFlowEngine";
+import { calculateGodAgentFamilyFlow, calculateGodAxis, classifyAgentFamily } from "./godAgentFlowEngine";
 
 const COLORADO_TWINS = {
   local: { year: 2026, month: 6, day: 27, hour: 18, minute: 10 },
@@ -37,29 +37,40 @@ describe("god-axis-v1", () => {
 });
 
 describe("god-agent-family-flow-v1", () => {
+  it("assigns only the declared house families and keeps H2/H8 neutral", () => {
+    expect(classifyAgentFamily(1)).toBe("agent-asc-family");
+    expect(classifyAgentFamily(11)).toBe("agent-asc-family");
+    expect(classifyAgentFamily(4)).toBe("agent-dsc-family");
+    expect(classifyAgentFamily(12)).toBe("agent-dsc-family");
+    expect(classifyAgentFamily(2)).toBe("agent-neutral");
+    expect(classifyAgentFamily(8)).toBe("agent-neutral");
+  });
+
   it("keeps the God calculation and Agent receiving field visible as separate values", () => {
     const result = calculateGodAgentFamilyFlow(COLORADO_TWINS);
 
     expect(result.godView.points).toHaveLength(7);
-    expect(result.agentView.counts.eligible).toBe(7);
+    expect(result.agentView.counts.eligible).toBe(4);
+    expect(result.agentView.counts.neutral).toBe(3);
     expect(result.topocentricObservation.status).toBe("unscored observation");
     expect(result.topocentricObservation.points).toHaveLength(7);
     expect(result.topocentricObservation.points.every(point => [point.rightAscensionHours, point.declination, point.azimuth, point.altitude].every(Number.isFinite))).toBe(true);
-    expect(result.agentView.counts.asc + result.agentView.counts.dsc).toBe(7);
+    expect(result.agentView.counts.asc + result.agentView.counts.dsc + result.agentView.counts.neutral).toBe(7);
     expect(result.familyFlow.rows).toHaveLength(7);
     expect(Object.values(result.familyFlow.cells).reduce((total, count) => total + count, 0)).toBe(7);
     expect(result.familyFlow.rows.every(row => row.agentHouse >= 1 && row.agentHouse <= 12)).toBe(true);
-    expect(result.familyFlow.rows.every(row => row.agentFamily === "agent-asc-family" || row.agentFamily === "agent-dsc-family")).toBe(true);
+    expect(result.familyFlow.rows.every(row => row.agentFamily === "agent-asc-family" || row.agentFamily === "agent-dsc-family" || row.agentFamily === "agent-neutral")).toBe(true);
   });
 
-  it("keeps the frozen Colorado–Twins record at a neutral no-call when God ties and Agent favors DSC", () => {
+  it("keeps the frozen Colorado–Twins record at a neutral no-call when God and Agent both tie", () => {
     const result = calculateGodAgentFamilyFlow(COLORADO_TWINS);
 
     expect(result.secondaryGeometry.status).toBe("unscored context");
     expect(result.secondaryGeometry.aspects.every(aspect => aspect.orb <= result.secondaryGeometry.majorAspectOrb)).toBe(true);
     expect(result.secondaryGeometry.note).toMatch(/do not change/i);
     expect(result.godView.polarity).toBe("tie");
-    expect(result.agentView.polarity).toBe("dsc");
+    expect(result.agentView.polarity).toBe("tie");
+    expect(result.agentView.counts).toMatchObject({ asc: 2, dsc: 2, neutral: 3, eligible: 4 });
     expect(result.topocentricObservation.note).toMatch(/does not alter/i);
     expect(result.synthesis.state).toBe("neutral");
     expect(result.outcome).toBe("no-call");

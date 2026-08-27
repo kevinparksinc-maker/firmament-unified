@@ -69,6 +69,10 @@ export type FrawleyMoonCandidate = {
   targetSides: FrawleySide[];
 };
 
+export type FrawleyEventPlanetEvidence = EventPlanet & {
+  house: number;
+};
+
 export type FrawleyResult = {
   version: typeof FRAWLEY_EVENT_VERSION;
   orientation: FrawleyOrientation;
@@ -96,6 +100,7 @@ export type FrawleyResult = {
     combustionReviewOrb: 2;
   };
   cusps: Array<{ house: number; longitude: number; sign: ZodiacSign }>;
+  planets: FrawleyEventPlanetEvidence[];
   significators: FrawleySignificator[];
   angularEvidence: FrawleyAngularEvidence[];
   moon: {
@@ -157,6 +162,17 @@ function angularRelation(longitude: number, cusps: number[]): string {
   return "house relation unavailable";
 }
 
+function houseForLongitude(longitude: number, cusps: number[]): number {
+  for (let index = 0; index < cusps.length; index += 1) {
+    const start = cusps[index]!;
+    const end = cusps[(index + 1) % cusps.length]!;
+    const span = normalizeDegrees(end - start);
+    const offset = normalizeDegrees(longitude - start);
+    if (offset < span || Math.abs(offset - span) < 0.0001) return index + 1;
+  }
+  throw new Error("Unable to assign the live planet to a Placidus house.");
+}
+
 function aspectError(first: number, second: number, aspect: number): number {
   const difference = shortestArc(first, second);
   return Math.abs(difference - aspect);
@@ -207,6 +223,10 @@ export function calculateFrawleyEvent(input: FrawleyEventInput): FrawleyResult {
   const cusps = baseChart.cusps.map(cusp => rotate(cusp, orientation));
   const planets = baseChart.planets.map(planet => transformedPlanet(planet, orientation));
   const cuspRows = cusps.map((longitude, index) => ({ house: index + 1, longitude, sign: signAt(longitude) }));
+  const planetEvidence: FrawleyEventPlanetEvidence[] = planets.map(planet => ({
+    ...planet,
+    house: houseForLongitude(planet.longitude, cusps),
+  }));
 
   const roleDefinitions: Array<{ role: FrawleyRole; side: FrawleySide; cusp: 1 | 4 | 7 | 10 }> = [
     { role: "L1", side: "A", cusp: 1 }, { role: "L10", side: "A", cusp: 10 },
@@ -353,6 +373,7 @@ export function calculateFrawleyEvent(input: FrawleyEventInput): FrawleyResult {
       combustionReviewOrb: 2,
     },
     cusps: cuspRows,
+    planets: planetEvidence,
     significators,
     angularEvidence,
     moon: {

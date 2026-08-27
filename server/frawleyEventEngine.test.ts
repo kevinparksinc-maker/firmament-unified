@@ -33,6 +33,9 @@ describe("frawley-event-v1", () => {
 
     expect(result.version).toBe("frawley-event-v1");
     expect(result.event.houseSystem).toBe("Placidus");
+    expect(result.planets).toHaveLength(7);
+    expect(result.planets.map(item => item.name)).toEqual(["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"]);
+    expect(result.planets.every(item => item.house >= 1 && item.house <= 12)).toBe(true);
     expect(result.significators.map(item => item.role)).toEqual(["L1", "L10", "L7", "L4"]);
     expect(result.angularEvidence).toHaveLength(16);
     expect(result.moon.startSign).toBeTruthy();

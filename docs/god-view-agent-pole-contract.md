@@ -71,17 +71,18 @@ If a different Agent View mapping is used, the mapping itself must be stored bef
 
 | Matrix direction | Source field | Receiving field | Recorded result |
 |---|---|---|---|
-| God → Agent | Fixed God RA/declination sector for every traditional planet | Local Agent Placidus house family | God-ASC, God-DSC, quadrature, or boundary sector; local ASC-family or DSC-family house; same-polarity and cross-polarity flow cells |
-| Agent → God | Local Agent Placidus house family for every traditional planet | Fixed God RA sector | Local ASC-family or DSC-family house; God-ASC, God-DSC, quadrature, or boundary sector; same-polarity and cross-polarity flow cells |
+| God → Agent | Fixed God RA/declination sector for every traditional planet | Local Agent Placidus house family | God-ASC, God-DSC, quadrature, or boundary sector; local ASC-family, DSC-family, or neutral house; same-polarity, cross-polarity, and neutral flow cells |
+| Agent → God | Local Agent Placidus house family for every traditional planet | Fixed God RA sector | Local ASC-family, DSC-family, or neutral house; God-ASC, God-DSC, quadrature, or boundary sector; same-polarity, cross-polarity, and neutral flow cells |
 
-The local Agent View uses the existing sports family partition, but labels it only as `agent-asc-family` and `agent-dsc-family` during this calculation:
+The local Agent View uses the existing sports family partition, with H2 and H8 retained as explicit neutral records:
 
 | Local family | Placidus houses |
 |---|---|
 | Agent-ASC family | H1, H3, H6, H10, H11 |
 | Agent-DSC family | H7, H9, H12, H4, H5 |
+| Agent-neutral houses | H2, H8; visible in the matrix but excluded from ASC/DSC polarity counts |
 
-Every eligible traditional planet appears once in the matrix. A local family assignment is determined from the real local Placidus event chart. A God sector is determined from `god-axis-v1` and never from a local angle. The individual matrix cells remain visible; a cross-polarity entry does not become hidden support for either side.
+Every traditional planet appears once in the matrix. A local family assignment is determined from the real local Placidus event chart. H2 and H8 are not members of either declared polarity family and remain visible neutral records. A God sector is determined from `god-axis-v1` and never from a local angle. The individual matrix cells remain visible; a cross-polarity or neutral entry does not become hidden support for either side.
 
 The Agent polarity count is the number of eligible traditional planets falling into each local Agent family. God polarity remains its independently calculated RA-sector count. A synthesis result considers **direction first**, then labels magnitude only as a descriptive count margin.
 
@@ -108,24 +109,28 @@ The first replay uses Colorado Rockies at Minnesota Twins, MLB game 823689, sche
 
 | Orientation | God View fixed-pole count | Agent View local-family count | Synthesis | Public method result |
 |---|---|---|---|---|
-| Standard | 1 God-ASC, 1 God-DSC, 5 neutral quadrature | 2 Agent-ASC family, 5 Agent-DSC family | `neutral` because God View ties | **No call** |
-| Inverse God-axis audit | 1 God-ASC, 1 God-DSC, 5 neutral quadrature | 2 Agent-ASC family, 5 Agent-DSC family | `neutral` because God View ties | **No call** |
+| Standard | 1 God-ASC, 1 God-DSC, 5 neutral quadrature | 2 Agent-ASC family, 2 Agent-DSC family, 3 Agent-neutral | `neutral` because both views tie | **No call** |
+| Inverse God-axis audit | 1 God-ASC, 1 God-DSC, 5 neutral quadrature | 2 Agent-ASC family, 2 Agent-DSC family, 3 Agent-neutral | `neutral` because both views tie | **No call** |
 
-For standard orientation, Saturn is the only God-ASC-sector traditional planet (RA 0.9004h) and Venus the only God-DSC-sector traditional planet (RA 9.2943h). Saturn lands in local Agent H4 / DSC family, producing the `asc-to-dsc` matrix cell; Venus lands in local Agent H9 / DSC family, producing `dsc-to-dsc`. Sun, Moon, Mercury, Mars, and Jupiter are God quadrature records. The full reproducible request is `scripts/rerun-god-agent-rockies-twins.ts`.
+For standard orientation, Saturn is the only God-ASC-sector traditional planet (RA 0.9004h) and Venus the only God-DSC-sector traditional planet (RA 9.2943h). Saturn lands in local Agent H4 / DSC family, producing the `asc-to-dsc` matrix cell; Venus lands in local Agent H9 / DSC family, producing `dsc-to-dsc`. Sun, Mercury, and Jupiter land in H8 and are Agent-neutral; Moon and Mars remain Agent-ASC. The full reproducible request is `scripts/rerun-god-agent-rockies-twins.ts`.
 
-This single replay shows the method's designed restraint: the Agent receiving field has a DSC-family concentration, but the fixed God-axis count ties, so synthesis abstains. One event is not an accuracy estimate and cannot establish whether ties, conflicts, or convergences are associated with upsets.
+This single replay shows the method's designed restraint: the Agent receiving field ties after H2/H8 are excluded from the declared polarity families, and the fixed God-axis also ties, so synthesis abstains. One event is not an accuracy estimate and cannot establish whether ties, conflicts, or convergences are associated with upsets.
 
 ## Interface Verification
 
 The Sports Horary interface exposes `God ↔ Agent Flow` as a fifth separately selectable method. Its tab renders the fixed God-ASC/God-DSC explanation, standard and inverse God-axis audit controls, exact venue input requirements for the separate local Agent receiver chart, and no manual Cluster placement field. The interface does not describe God View as receiving teams, venue coordinates, local houses, or a local horizon.
 
-Using the frozen Target Field record through normal interface controls produced the standard `god-agent-family-flow-v1` audit panel. It displayed the 1–1 God-axis tie, 2–5 Agent family counts, all seven RA/declination-to-local-house rows, all six visible matrix cell totals, and `neutral` / **No call** synthesis. The God View table identifies Venus as `god-dsc` in local H9 and Saturn as `god-asc` in local H4; all other traditional planets are fixed-sector quadrature records for this event.
+Using the frozen Target Field record through normal interface controls now produces the standard `god-agent-family-flow-v1` audit panel with a 1–1 God-axis tie, 2–2 Agent polarity-family count, 3 Agent-neutral rows, all seven RA/declination-to-local-house rows, all nine visible matrix cell totals, and `neutral` / **No call** synthesis. The God View table identifies Venus as `god-dsc` in local H9 and Saturn as `god-asc` in local H4; Sun, Mercury, and Jupiter are fixed-sector quadrature records in local H8 and therefore Agent-neutral.
 
 After the unscored secondary aspect audit was added, a lightweight fresh preview initially returned a blank startup capture and then rendered the Sports Horary page and `God ↔ Agent Flow` tab normally. The focused engine regression confirms the aspect rows are bounded by the declared 5° orb and cannot alter the frozen neutral Colorado–Minnesota result.
 
 The refreshed God ↔ Agent form retained the exact Target Field venue coordinates, local start, teams, and recorded pregame line used by the historical script before submitting the updated aspect audit.
 
-The submitted interface displayed six declared-orb aspect rows, the visible `unscored context` status, and the explicit statement that these rows do not change either view's counts, synthesis, strength, or public outcome. It retained the standard God tie, Agent-DSC polarity, neutral synthesis, and public **No call**. The browser console contained only the known development service-worker MIME warning and no application exception.
+After the Agent-family correction, the strict God ↔ Agent form again accepted the same frozen Target Field event record without silently changing its team, venue, timezone, or pregame favorite provenance. The submitted audit must now show H2/H8 as Agent-neutral and exclude those rows from Agent ASC/DSC counts.
+
+The corrected browser replay showed Sun, Mercury, and Jupiter in H8 as `agent-neutral`; the local Agent result was `2 ASC family / 2 DSC family / 3 neutral`, producing an Agent tie and neutral/no-call synthesis. It also rendered the renamed Stadium-local compass coordinates table with exact Astronomy Engine provenance and the unchanged explicit non-scoring boundary.
+
+The submitted interface displayed six declared-orb aspect rows, the visible `unscored context` status, and the explicit statement that these rows do not change either view's counts, synthesis, strength, or public outcome. After the Agent-family correction it retains the standard God tie, Agent tie, neutral synthesis, and public **No call**. The browser console contained only the known development service-worker MIME warning and no application exception.
 
 ## References
 
