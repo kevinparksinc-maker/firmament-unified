@@ -117,3 +117,7 @@
 - [x] Map the supplied KP horary-seed/Placidus/L1-L7/6th-and-11th-CSL blueprint against the active KP layer, including its current numeric-cusp and equal-house assumptions.
 - [ ] Define an isolated KP sports ruleset contract with explicit seed provenance, location, Placidus cusp generator, selected ayanamsha/zodiac convention, 249-sub mapping source, four-step significator trace, and retrograde data.
 - [ ] Add KP-specific input-completeness gates and test fixtures for 6th/11th cuspal sub-lord hierarchy, star-lord significations, retrograde filters, conflict/tie outcomes, and no-call conditions before scoring is expanded.
+- [x] Verify the accessible Frawley sports-astrology source scope and extract only concrete event-chart calculation rules suitable for a no-seed module.
+- [x] Define a separate Frawley-first sports method from real game start and venue inputs, with explicit house, team-assignment, four-significator, cusp, Moon, and affliction evidence.
+- [x] Exclude unclear Gamblers Dharma rules from active scoring unless the user supplies a source with complete, reproducible calculations and separate validation criteria; no active module was added.
+- [x] Produce a source-backed Frawley event-chart worksheet specification with real event inputs, a named quadrant house calculation, H1/H4/H7/H10 significators, cusp evidence, Moon timing, declared afflictions, and conflict/no-call states.
