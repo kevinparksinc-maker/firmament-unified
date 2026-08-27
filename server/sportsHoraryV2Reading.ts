@@ -21,6 +21,13 @@ import { calculateTerritorialControl, formatTerritorialReport } from "./territor
 type Chart = Record<string, PlanetPlacement>;
 export type SportsMapOrientation = "standard" | "inverse-180";
 
+export type StructuredLegacyTransit = {
+  planet: string;
+  eclipticLon: number;
+  rx: boolean;
+  longitudeSource: "topocentric-apparent-ecliptic" | "mean-node-ecliptic";
+};
+
 const normalizeDegree = (value: number) => ((value % 360) + 360) % 360;
 
 /**
@@ -36,6 +43,30 @@ export function invertSportsChart180(chart: Chart): Chart {
   }));
 }
 
+/**
+ * Creates the legacy scorer's chart directly from structured coordinates.
+ * Client-supplied sign, degree, and Whole Sign house labels never enter this
+ * path; Equal Houses are assigned later from exact longitude plus Ascendant.
+ */
+export function structuredLegacyChartFromInput(planets: StructuredLegacyTransit[]): Chart {
+  return Object.fromEntries(planets.map((placement) => {
+    const longitude = normalizeDegree(placement.eclipticLon);
+    const sign = SIGN_ORDER[Math.floor(longitude / 30)] ?? "Aries";
+    return [placement.planet, {
+      planet: placement.planet,
+      degree: longitude % 30,
+      sign,
+      house: null,
+      rx: placement.rx,
+      combust: false,
+      cazimi: false,
+      eclipticLon: longitude,
+      raw: `structured:${placement.longitudeSource}`,
+      kind: "transit" as const,
+    }];
+  }));
+}
+
 export interface SportsHoraryV2Input {
   question: string;
   natalText: string;
@@ -44,6 +75,10 @@ export interface SportsHoraryV2Input {
   challengerName?: string;
   history?: Message[];
   mapOrientation?: SportsMapOrientation;
+  /** Exact local-observer or explicitly named node coordinates for Cluster. */
+  structuredTransit?: StructuredLegacyTransit[];
+  /** Exact Ascendant from the same event observer and instant. */
+  structuredAscendant?: number;
 }
 
 export interface SportsHoraryV2Output {
@@ -167,20 +202,26 @@ export function formatDeterministicSportsHoraryFallback(
 export async function sportsHoraryV2Layer(
   input: SportsHoraryV2Input,
 ): Promise<SportsHoraryV2Output> {
-  const { result } = runAstroReading(input.natalText, input.transitText, "");
+  const parsedReading = input.structuredTransit?.length
+    ? null
+    : runAstroReading(input.natalText, input.transitText, "");
+  const result = parsedReading?.result;
 
   const transits = result?.transits ?? {};
   const natal = result?.natal ?? {};
-  const usedChart: "transit" | "natal" =
-    Object.keys(transits).length >= 5 ? "transit" : "natal";
+  const usedChart: "transit" | "natal" = input.structuredTransit?.length
+    ? "transit"
+    : Object.keys(transits).length >= 5 ? "transit" : "natal";
 
-  const standardChart = usedChart === "transit" ? transits : natal;
+  const standardChart = input.structuredTransit?.length
+    ? structuredLegacyChartFromInput(input.structuredTransit)
+    : usedChart === "transit" ? transits : natal;
   const mapOrientation = input.mapOrientation ?? "standard";
   const chart = mapOrientation === "inverse-180" ? invertSportsChart180(standardChart) : standardChart;
   // Root bug (same as v1): ascendant was parsed by astroEngine but never
   // retrieved here, so Arabic Lots were always [] and, when a duplicate
   // local buildChartData existed, always defaulted to house 1.
-  const standardAscendant = result?.ascendant ?? undefined;
+  const standardAscendant = input.structuredAscendant ?? result?.ascendant ?? undefined;
   const ascendant = standardAscendant === undefined
     ? undefined
     : mapOrientation === "inverse-180"

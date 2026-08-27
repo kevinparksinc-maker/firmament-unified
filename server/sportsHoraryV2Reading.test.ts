@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   formatDeterministicSportsHoraryFallback,
+  structuredLegacyChartFromInput,
   type SportsHoraryV2Input,
 } from "./sportsHoraryV2Reading";
+import { assignEqualHousesToChart } from "./sportsHoraryReading";
 
 describe("legacy Cluster narration fallback", () => {
   it("preserves the layer-count choice and labels raw totals as audit-only when narration is unavailable", () => {
@@ -50,5 +52,21 @@ describe("legacy Cluster narration fallback", () => {
     expect(output).toContain("**Side B:** KP Stellar.");
     expect(output).toContain("Raw point totals remain diagnostics only: Side A 89.00, Side B 10.00, margin 79.00.");
     expect(output).toContain("They do not override the layer-count result.");
+  });
+});
+
+describe("legacy Cluster structured coordinate handoff", () => {
+  it("retains the exact topocentric longitude and rejects a text-derived Whole Sign house before Equal House scoring", () => {
+    const chart = structuredLegacyChartFromInput([
+      { planet: "Moon", eclipticLon: 156.32819922322972, rx: false, longitudeSource: "topocentric-apparent-ecliptic" },
+      { planet: "Rahu", eclipticLon: 316.28766501154996, rx: true, longitudeSource: "mean-node-ecliptic" },
+    ]);
+    const normalized = assignEqualHousesToChart(chart, 16.55092506828646);
+
+    expect(chart.Moon.eclipticLon).toBe(156.32819922322972);
+    expect(chart.Moon.degree).toBeCloseTo(6.32819922322972, 12);
+    expect(chart.Moon.house).toBeNull();
+    expect(normalized.Moon.house).toBe(5);
+    expect(normalized.Rahu.house).toBe(10);
   });
 });

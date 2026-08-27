@@ -2,7 +2,7 @@
  * ARCANA STATE — Topocentric Ephemeris Engine
  *
  * Two-layer architecture as per the Snow Globe brief:
- *  Math Layer  → Swiss-equivalent topocentric positions (astronomy-engine)
+ *  Math Layer  → observer-relative topocentric positions (astronomy-engine)
  *  Visual Layer → Alt/Az output for the parabolic dome renderer
  *
  * All positions are TOPOCENTRIC (observer on Earth's surface),
@@ -31,8 +31,6 @@ const {
   MakeTime,
   Observer,
   SiderealTime,
-  SunPosition,
-  GeoVector,
   Ecliptic,
   Equator,
   Horizon,
@@ -51,6 +49,8 @@ export interface PlanetPosition {
   symbol: string;
   /** Ecliptic longitude in degrees (0–360) — the only zodiac frame this engine uses (tropical and sidereal are identical here, since this model has no precession) */
   eclipticLon: number;
+  /** Physical bodies use a local observer vector; mathematical nodes remain mean ecliptic points. */
+  longitudeSource: "topocentric-apparent-ecliptic" | "mean-node-ecliptic";
   /** Right Ascension in degrees (0-360), converted from astronomy-engine's native hours -- for polar/equatorial dome projection rendering */
   ra: number;
   /** Declination in degrees (-90 to +90) -- for polar/equatorial dome projection rendering */
@@ -157,6 +157,16 @@ function eclipticToEquatorial(eclipticLon: number): { ra: number; dec: number } 
   const dec = (decRad * 180) / Math.PI;
 
   return { ra, dec };
+}
+
+/**
+ * Returns the apparent ecliptic longitude from the supplied local observer.
+ * Equator subtracts the observer vector from the geocentric body vector;
+ * requesting J2000 coordinates keeps its vector compatible with Ecliptic.
+ */
+function topocentricEclipticLongitude(body: any, date: Date, observer: any): number {
+  const topocentricEqj = Equator(body, MakeTime(date), observer, false, true);
+  return Ecliptic(topocentricEqj.vec).elon;
 }
 
 // ─── Ascendant / MC (corrected) ────────────────────────────────────────────────
@@ -286,15 +296,7 @@ export async function calculateChart(
 
   for (const { name, body } of bodyList) {
     try {
-      let eclipticLon: number;
-      if (body === Astronomy.Body.Sun) {
-        const sp = SunPosition(MakeTime(date));
-        eclipticLon = sp.elon;
-      } else {
-        const vec = GeoVector(body, MakeTime(date), true);
-        const ecl = Ecliptic(vec);
-        eclipticLon = ecl.elon;
-      }
+      const eclipticLon = topocentricEclipticLongitude(body, date, astroObs);
 
       const { sign, degree, minutes } = lonToSignDeg(eclipticLon);
 
@@ -308,13 +310,7 @@ export async function calculateChart(
       );
 
       const yesterday = new Date(date.getTime() - 86400000);
-      let eclipticYesterday: number;
-      if (body === Astronomy.Body.Sun) {
-        eclipticYesterday = SunPosition(MakeTime(yesterday)).elon;
-      } else {
-        const vecY = GeoVector(body, MakeTime(yesterday), true);
-        eclipticYesterday = Ecliptic(vecY).elon;
-      }
+      const eclipticYesterday = topocentricEclipticLongitude(body, yesterday, astroObs);
       let retrograde = false;
       if (body !== Astronomy.Body.Sun && body !== Astronomy.Body.Moon) {
         let diff = eclipticLon - eclipticYesterday;
@@ -329,6 +325,7 @@ export async function calculateChart(
         name,
         symbol: PLANET_SYMBOLS[name] ?? "★",
         eclipticLon,
+        longitudeSource: "topocentric-apparent-ecliptic",
         ra: equatorial.ra * 15, // astronomy-engine returns RA in hours; convert to degrees
         dec: equatorial.dec,
         sign,
@@ -358,6 +355,7 @@ export async function calculateChart(
       name: "Rahu",
       symbol: "☊",
       eclipticLon: rahuEcliptic,
+      longitudeSource: "mean-node-ecliptic",
       ra: rahuEquatorial.ra,
       dec: rahuEquatorial.dec,
       sign: rahuInfo.sign,
@@ -374,6 +372,7 @@ export async function calculateChart(
       name: "Ketu",
       symbol: "☋",
       eclipticLon: ketuEcliptic,
+      longitudeSource: "mean-node-ecliptic",
       ra: ketuEquatorial.ra,
       dec: ketuEquatorial.dec,
       sign: ketuInfo.sign,

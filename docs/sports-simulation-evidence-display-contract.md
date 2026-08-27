@@ -31,6 +31,18 @@ The interface may reveal previously hidden **returned** calculations. It must no
 
 For the legacy Cluster route, the client displays the server-returned raw longitudes and derives an Equal House audit label only for inspection. The server remains the calculation authority: it independently reassigns every placement from the same raw longitude and supplied Ascendant before it computes Territorial, KP, Lots, or a layer vote. A Whole Sign label returned by the ephemeris may never be used as a fallback scored house in this route.
 
+## Legacy Cluster Coordinate-Source Contract
+
+| Scored or displayed element | Required source | Permitted use |
+|---|---|---|
+| Physical-planet ecliptic longitude | Astronomy Engine local-observer vector, converted to topocentric apparent ecliptic longitude | The exact structured longitude is the source for sign, degree, Equal House assignment, fixed-star proximity, aspects, and all relevant Cluster layers. It must not be rounded into a text parser before scoring. |
+| Rahu / Ketu | Declared mean ecliptic orbital node formula | Nodes are mathematical points, not physical local-observer vectors. Their mean longitude is retained with that label and assigned to the same topocentric Ascendant-based Equal House map. |
+| Ascendant and cusp set | Exact local event time and exact stadium latitude/longitude | The observer inputs define the Ascendant. The Cluster event UI must retain the visible numerical coordinates; city presets may only prefill them. |
+| Cluster/Territorial/KP houses | Continuous 30° Equal Houses anchored at that exact Ascendant | This is the only scored legacy house basis. A planet row's Whole Sign label cannot substitute for it. |
+| Ephemeris Whole Sign label | Same raw ecliptic longitude, sign-boundary reference | Display-only. It remains visibly named so an observer can compare the systems, but it has zero effect on legacy Cluster scoring. |
+
+The previous Legacy Cluster route did not meet this contract: it mixed a Whole Sign `house` row with cusp-relative scoring and routed values through rounded text. That route is superseded. The current route must pass structured values from the server ephemeris directly to the Cluster scorer and must reject a missing exact coordinate source rather than quietly fall back to a city-center or parser-derived value.
+
 ## Interface Verification Record
 
 The live Frawley method renders the strict event-record gate before a calculation. It requires the named sides, exact venue and stadium coordinates, local date/time, and pregame favorite provenance; no event result is fabricated before submission.

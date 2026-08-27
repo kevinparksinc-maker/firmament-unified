@@ -26,6 +26,7 @@ type EphemerisPlanet = {
   house?: number | null;
   retrograde?: boolean;
   eclipticLon?: number | null;
+  longitudeSource?: "topocentric-apparent-ecliptic" | "mean-node-ecliptic";
 };
 
 type EphemerisChart = {
@@ -87,11 +88,9 @@ const legacyChartInput = {
   favoriteSource: record.pregame.marketContext,
   planets: eventChart.planets.map((planet) => ({
     planet: planet.name,
-    degree: typeof planet.degree === "number" ? planet.degree : planet.degreeInSign ?? 0,
-    sign: planet.sign,
-    house: planet.house ?? null,
     rx: planet.retrograde ?? false,
-    absolute: planet.eclipticLon ?? null,
+    eclipticLon: planet.eclipticLon ?? 0,
+    longitudeSource: planet.longitudeSource ?? "topocentric-apparent-ecliptic",
   })),
   houseCusps: eventChart.houses.cusps,
 };

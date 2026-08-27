@@ -20,15 +20,6 @@ import { Volume2, Square } from "lucide-react";
  * You enter the two sides + the event-chart placements, then ask the oracle.
  */
 
-const TRANSIT_PLACEHOLDER = `Paste the event-chart placements (the sky at game time). One planet per line, e.g.:
-Sun: 15° Leo, 5th house
-Moon: 10° Cancer, 4th house
-Mars: 5° Aries, 1st house
-Mercury: 20° Leo, 5th house
-Jupiter: 8° Sagittarius, 9th house
-Venus: 12° Libra, 7th house
-Saturn: 25° Capricorn, 10th house`;
-
 const MAJOR_CITIES = {
   "New York": { lat: 40.7128, lon: -74.006 },
   "Los Angeles": { lat: 34.0522, lon: -118.2437 },
@@ -95,7 +86,7 @@ function formatClusterEqualHouseChart(planets: any[], ascendant: number): string
     ...planets.map((planet: any) => {
       const longitude = normalizeLongitude(planet.eclipticLon ?? 0);
       const house = equalHouseFromAscendant(longitude, asc);
-      return `${planet.name}: ${Number(planet.degreeInSign ?? planet.degree ?? 0).toFixed(2)}° ${planet.sign}, ${ordinalHouse(house)} house | raw longitude ${longitude.toFixed(4)}°`;
+      return `${planet.name}: ${Number(planet.degreeInSign ?? planet.degree ?? 0).toFixed(2)}° ${planet.sign}, ${ordinalHouse(house)} house | raw longitude ${longitude.toFixed(4)}° | source ${planet.longitudeSource ?? "not returned"}`;
     }),
   ].join("\n");
 }
@@ -711,25 +702,6 @@ export default function SportsHorary() {
     });
   };
 
-  const ask = trpc.sportsHorary.ask.useMutation({
-    onSuccess: data => {
-      setMessages(prev => [...prev, { role: "assistant", content: data.answer }]);
-      setResult({
-        verdict: data.verdict as Verdict,
-        score: data.score,
-        flags: data.flags,
-        mapOrientation: "standard",
-      });
-      recordClusterRun(data.verdict as Verdict, "standard", "legacy-unstructured-chart", "Legacy unstructured chart input is not a strict event record and is excluded from cross-method comparison.");
-    },
-    onError: err => {
-      setMessages(prev => [
-        ...prev,
-        { role: "assistant", content: `The sky is clouded: ${err.message}` },
-      ]);
-    },
-  });
-
   const askWithChart = trpc.sportsHorary.askWithChart.useMutation({
     onSuccess: data => {
       const tcReport = data.territorialControl?.fullReport ? `\n\n**TERRITORIAL CONTROL**\n${data.territorialControl.fullReport}` : "";
@@ -864,9 +836,17 @@ export default function SportsHorary() {
         ]);
       }
 
-      // Get coordinates
-      const city = MAJOR_CITIES[selectedCity as keyof typeof MAJOR_CITIES];
-      const coords = city || { lat: 40.7128, lon: -74.006 };
+      const latitude = Number(venueLatitude);
+      const longitude = Number(venueLongitude);
+      if (!venueLatitude.trim() || !venueLongitude.trim()
+        || !Number.isFinite(latitude) || latitude < -90 || latitude > 90
+        || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+        setMessages(prev => [
+          ...prev,
+          { role: "assistant", content: "Cluster requires the exact venue latitude and longitude for its topocentric observer. A city preset can fill these fields, but verify or replace it with the stadium coordinates before calculating." },
+        ]);
+        return;
+      }
 
       const payload = {
         year,
@@ -874,8 +854,8 @@ export default function SportsHorary() {
         day,
         hour: hours,
         minute: minutes,
-        latitude: coords.lat,
-        longitude: coords.lon,
+        latitude,
+        longitude,
         altitude: 0,
       };
       calculateChart.mutate(payload);
@@ -962,10 +942,10 @@ export default function SportsHorary() {
       return;
     }
 
-    if (transitInput.trim().length < 10) {
+    if (!calculatedChart?.planets || !calculatedChart?.houses?.cusps) {
       setMessages([...next, {
         role: "assistant",
-        content: "I need the event-chart placements first — paste the sky at game time in the box above, then ask.",
+        content: "Cluster requires a generated exact topocentric event chart. Enter the local event time and stadium coordinates, calculate the chart, inspect the raw-longitude audit, then ask. Text-only or manually altered placement rows are not scored.",
       }]);
       return;
     }
@@ -977,21 +957,17 @@ export default function SportsHorary() {
       askWithChart.mutate({
         question: content,
         planets: calculatedChart.planets.map((p: any) => {
-          const degree = typeof p.degree === "number" ? p.degree : (typeof p.degreeInSign === "number" ? p.degreeInSign : 0);
-          return { planet: p.name, degree, sign: p.sign, house: p.house || null, rx: p.retrograde || false, absolute: p.eclipticLon || null };
+          return {
+            planet: p.name,
+            eclipticLon: p.eclipticLon,
+            rx: p.retrograde || false,
+            longitudeSource: p.longitudeSource,
+          };
         }),
         houseCusps: calculatedChart.houses.cusps,
         favoriteName: favorite || undefined,
         challengerName: challenger || undefined,
         mapOrientation,
-        history: messages.filter(m => m.role !== "system").map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
-      });
-    } else {
-      ask.mutate({
-        question: content,
-        transitPlacements: transitInput,
-        favoriteName: favorite || undefined,
-        challengerName: challenger || undefined,
         history: messages.filter(m => m.role !== "system").map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
       });
     }
@@ -1130,7 +1106,33 @@ export default function SportsHorary() {
           </section>
         )}
 
-        <div className={`grid gap-3 mb-3 ${sportsMethod === "cluster" ? "grid-cols-4" : "grid-cols-3"}`}>
+        {sportsMethod === "cluster" && <section className="mb-4 rounded-lg border border-primary/40 bg-primary/5 p-3">
+          <h2 className="text-sm font-semibold">Topocentric venue observer required</h2>
+          <p className="mt-1 text-xs text-muted-foreground">The city preset is only a starting value. Cluster/Territorial/KP uses the exact latitude and longitude below to construct the event observer, Ascendant, Equal House map, and all local physical-planet positions. Replace a city-center preset with the stadium coordinates whenever they differ.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <select
+              value={selectedCity}
+              onChange={e => {
+                const cityName = e.target.value;
+                const preset = MAJOR_CITIES[cityName as keyof typeof MAJOR_CITIES];
+                setSelectedCity(cityName);
+                if (preset) {
+                  setVenueLatitude(String(preset.lat));
+                  setVenueLongitude(String(preset.lon));
+                }
+              }}
+              className="rounded-lg border-2 border-border bg-card p-2 text-sm"
+            >
+              {Object.keys(MAJOR_CITIES).map(city => (
+                <option key={city} value={city}>{city} preset</option>
+              ))}
+            </select>
+            <input type="number" step="any" value={venueLatitude} onChange={event => setVenueLatitude(event.target.value)} placeholder="Exact stadium latitude" className="rounded-lg border-2 border-border bg-card p-2 text-sm" />
+            <input type="number" step="any" value={venueLongitude} onChange={event => setVenueLongitude(event.target.value)} placeholder="Exact stadium longitude" className="rounded-lg border-2 border-border bg-card p-2 text-sm" />
+          </div>
+        </section>}
+
+        <div className="grid grid-cols-3 gap-3 mb-3">
           <input
             type="date"
             value={eventDate}
@@ -1156,23 +1158,15 @@ export default function SportsHorary() {
             max="59"
             className="rounded-lg border-2 border-border bg-card p-2 text-sm"
           />
-          {sportsMethod === "cluster" && <select
-            value={selectedCity}
-            onChange={e => setSelectedCity(e.target.value)}
-            className="rounded-lg border-2 border-border bg-card p-2 text-sm"
-          >
-            {Object.keys(MAJOR_CITIES).map(city => (
-              <option key={city} value={city}>
-                {city}
-              </option>
-            ))}
-          </select>}
         </div>
 
         {sportsMethod === "cluster" ? <>
           <p className="mb-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs text-muted-foreground">
             <strong className="text-foreground">Declared Cluster house basis:</strong> Equal 30° houses anchored at the displayed Ascendant. The event calculator may also expose Whole Sign labels for other chart views, but Cluster/Territorial/KP, Lots, and its layer-vote scorecard recalculate from the exact Ascendant and do not use those labels.
           </p>
+          {calculatedChart?.observer && <p className="mb-3 rounded-lg border border-primary/20 bg-card/70 p-3 text-xs text-muted-foreground">
+            <strong className="text-foreground">Stored topocentric observer:</strong> {Number(calculatedChart.observer.latitude).toFixed(6)}°, {Number(calculatedChart.observer.longitude).toFixed(6)}° at {Number(calculatedChart.observer.altitude ?? 0).toFixed(0)} m. Regenerate the chart after any venue-coordinate change.
+          </p>}
           <button
             onClick={handleCalculateChart}
             disabled={calculateChart.isPending || !eventDate}
@@ -1183,8 +1177,8 @@ export default function SportsHorary() {
 
           <textarea
           value={transitInput}
-          onChange={e => setTransitInput(e.target.value)}
-          placeholder={TRANSIT_PLACEHOLDER}
+          readOnly
+          placeholder="Generate a topocentric event chart above. The exact structured values used by Cluster/Territorial/KP will appear here as an inspection record."
           style={{
             width: "100%",
             minHeight: "300px",
@@ -1206,11 +1200,12 @@ export default function SportsHorary() {
               <p className="mt-1 text-xs text-muted-foreground">Territorial Control, KP, Lots, and layer votes use the <strong className="text-foreground">Cluster Equal House</strong> column: twelve continuous 30° sectors from the exact Ascendant. The ephemeris Whole Sign label is visible only as a separately named reference and is not scored by Cluster.</p>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[680px] text-left text-xs">
+              <table className="w-full min-w-[820px] text-left text-xs">
                 <thead className="bg-muted/45 text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 font-medium">Point</th>
                     <th className="px-3 py-2 font-medium">Raw longitude</th>
+                    <th className="px-3 py-2 font-medium">Longitude source</th>
                     <th className="px-3 py-2 font-medium">Sign placement</th>
                     <th className="px-3 py-2 font-medium">Cluster Equal House</th>
                     <th className="px-3 py-2 font-medium">Ephemeris Whole Sign reference</th>
@@ -1223,6 +1218,7 @@ export default function SportsHorary() {
                     return <tr key={planet.name} className="border-t border-border/60">
                       <td className="px-3 py-2 font-medium">{planet.name}</td>
                       <td className="px-3 py-2 font-mono">{rawLongitude.toFixed(4)}°</td>
+                      <td className="px-3 py-2 text-muted-foreground">{planet.longitudeSource === "mean-node-ecliptic" ? "Mean orbital node — mathematical point" : "Topocentric apparent ecliptic"}</td>
                       <td className="px-3 py-2">{Number(planet.degreeInSign ?? planet.degree ?? 0).toFixed(2)}° {planet.sign}</td>
                       <td className="px-3 py-2 font-semibold text-primary">H{clusterHouse}</td>
                       <td className="px-3 py-2 text-muted-foreground">H{planet.house ?? "—"} — reference only</td>
@@ -1281,7 +1277,7 @@ export default function SportsHorary() {
         <AIChatBox
           messages={messages}
           onSendMessage={handleSend}
-          isLoading={ask.isPending || askWithChart.isPending || frawleyEvent.isPending || tajikaPrasnaEvent.isPending || panchangaArchetype.isPending || godAgentFlow.isPending}
+          isLoading={askWithChart.isPending || frawleyEvent.isPending || tajikaPrasnaEvent.isPending || panchangaArchetype.isPending || godAgentFlow.isPending}
           height="520px"
           placeholder="Ask the oracle: who wins tonight?"
           emptyStateMessage="Enter the chart above, then ask who takes the contest."

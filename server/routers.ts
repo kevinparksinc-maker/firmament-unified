@@ -969,21 +969,13 @@ const sportsHoraryRouter = router({
           .optional(),
       })
     )
-    .mutation(async ({ input }) => {
-      const result = await sportsHoraryLayer({
-        question: input.question,
-        natalText: input.natalPlacements ?? "",
-        transitText: input.transitPlacements ?? "",
-        favoriteName: input.favoriteName,
-        challengerName: input.challengerName,
-        history: input.history as any,
-      });
+    .mutation(async () => {
       return {
-        answer: result.answer,
-        score: result.score.score,
-        verdict: result.score.verdict,
-        flags: result.score.flags,
-        usedChart: result.usedChart,
+        answer: "This unstructured legacy chart route is retired. Cluster/Territorial/KP requires a generated topocentric event chart with exact venue coordinates, exact structured longitudes, an explicit longitude source, and the matching Ascendant. No result was calculated.",
+        score: 0,
+        verdict: "Even",
+        flags: ["structured_topocentric_chart_required"],
+        usedChart: "transit",
       };
     }),
   askV2: publicProcedure
@@ -1004,22 +996,20 @@ const sportsHoraryRouter = router({
           .optional(),
       })
     )
-    .mutation(async ({ input }) => {
-      const result = await sportsHoraryV2Layer({
-        question: input.question,
-        natalText: input.natalPlacements ?? "",
-        transitText: input.transitPlacements ?? "",
-        favoriteName: input.favoriteName,
-        challengerName: input.challengerName,
-        history: input.history as any,
-      });
+    .mutation(async () => {
       return {
-        answer: result.answer,
-        score: result.score,
-        verdict: result.verdict,
-        flags: result.flags,
-        usedChart: result.usedChart,
-        territorialControl: result.territorialControl,
+        answer: "This text-only Cluster V2 route is retired. Use the structured topocentric event-chart route so raw longitudes, observer source, Ascendant, and Equal House assignment remain auditable. No result was calculated.",
+        score: 0,
+        verdict: "Even",
+        flags: ["structured_topocentric_chart_required"],
+        usedChart: "transit",
+        territorialControl: {
+          sideATotal: 0,
+          sideBTotal: 0,
+          swing: 0,
+          summary: "No legacy score: exact structured topocentric chart required.",
+          fullReport: "",
+        },
       };
     }),
   askWithChart: publicProcedure
@@ -1029,11 +1019,9 @@ const sportsHoraryRouter = router({
         planets: z.array(
           z.object({
             planet: z.string(),
-            degree: z.number(),
-            sign: z.string(),
-            house: z.number().nullable(),
+            eclipticLon: z.number(),
             rx: z.boolean().default(false),
-            absolute: z.number().nullable(),
+            longitudeSource: z.enum(["topocentric-apparent-ecliptic", "mean-node-ecliptic"]),
           })
         ),
         houseCusps: z.array(z.number()),
@@ -1051,40 +1039,23 @@ const sportsHoraryRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      // Format planets into readable chart text for the LLM
-      const transitText = input.planets
-        .map(p => {
-          const rx = p.rx ? " Rx" : "";
-          const house = p.house ? `, ${p.house}th house` : "";
-          return `${p.planet}: ${p.degree}° ${p.sign}${house}${rx}`;
-        })
-        .join("\n");
-
-      // The ascendant was previously only used for the separate
-      // calculateTerritorialControl call below and never told to
-      // sportsHoraryV2Layer — its parser only knows the ascendant if an
-      // "Asc:" line is present in the text it's given. Without this, the
-      // narrative and the territorial-control numbers were computed from
-      // two different ideas of the chart (one with a real ascendant, one
-      // with none), which is why they could disagree even when both were
-      // individually correct.
+      // Preserve the exact observer-relative ecliptic coordinates. The
+      // legacy Cluster scorer must never reconstruct them from rounded text
+      // or accept the ephemeris Whole Sign label as a scored house.
       const ascendantLon = input.houseCusps[0];
-      const ascSignIndex = Math.floor(((ascendantLon % 360) + 360) % 360 / 30);
-      const ascDegreeInSign = ((ascendantLon % 360) + 360) % 360 % 30;
-      const ascLine = `Asc: ${ascDegreeInSign.toFixed(2)}° ${ZODIAC_SIGNS[ascSignIndex] || "Aries"}`;
-      const transitTextWithAsc = `${ascLine}\n${transitText}`;
 
-      // Get V2 reading — this now also computes territorialControl
-      // internally from this exact same chart, so there's one source of
-      // truth instead of two independent engines.
+      // The V2 route rebuilds signs and scored Equal Houses exclusively from
+      // these exact longitudes and the exact Ascendant.
       const result = await sportsHoraryV2Layer({
         question: input.question,
         natalText: "",
-        transitText: transitTextWithAsc,
+        transitText: "",
         favoriteName: input.favoriteName,
         challengerName: input.challengerName,
         mapOrientation: input.mapOrientation,
         history: input.history as any,
+        structuredTransit: input.planets,
+        structuredAscendant: ascendantLon,
       });
 
       return {
