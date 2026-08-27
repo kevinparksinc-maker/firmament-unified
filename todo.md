@@ -111,3 +111,6 @@
 - [x] Define a reproducible historical backtest and holdout protocol using pre-game inputs and verified game results, with accuracy, calibration, coverage, and abstention metrics.
 - [ ] Add sports input provenance, completeness gates, and uncertainty/abstention safeguards so missing or mixed chart data cannot produce a confident-looking call.
 - [ ] Evaluate any scoring calibration only on historical training data, then report holdout performance and limitations without presenting the system as a guaranteed predictor.
+- [x] Map the supplied Frawley L1/L10 versus L7/L4 method and Tajika/Prasna method against the current sports cluster engine, identifying overlap, conflict, and inactive assumptions.
+- [ ] Define two separately selectable and versioned sports rulesets with explicit chart type, house system, team-mapping rule, permitted planets, source data, and abstention requirements; do not merge their point systems.
+- [ ] Specify verifiable inputs and separate historical holdout protocols for cusp-proximity, Moon-next-aspect, node contact, Tajika application, Graha Yuddha latitude, and any future Kot Chakra module before implementation.
