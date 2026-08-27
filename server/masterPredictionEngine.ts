@@ -38,6 +38,10 @@ import {
   nodeLayer,
 } from "./clusterKnowledgeLayers";
 import { kpDecisionLayer } from "./kpEngine";
+import {
+  calculateLayerVoteScorecard,
+  type SportsLayerVoteScorecard,
+} from "./layerVoteEngine";
 
 // ─────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -129,10 +133,13 @@ export interface LayerBreakdown {
 
 export interface PredictionResult {
   breakdown: LayerBreakdown[];
+  /** Independent current-layer choices used for the public experimental call. */
+  layerVoteScorecard: SportsLayerVoteScorecard;
   sideATotal: number;
   sideBTotal: number;
   margin: number;
   predictedWinner: "A" | "B" | "too close to call";
+  /** Legacy raw-margin diagnostic retained for compatibility; never a probability. */
   confidence: number;
   volatilityWarning: string;
   regulusOverride: "A" | "B" | "both" | null;
@@ -505,10 +512,14 @@ export function calculateFullPrediction(chart: ChartData, config: ClusterConfig)
     harmoniousFriction.sideBPoints +
     nodes.sideBPoints;
 
-  const TOO_CLOSE_THRESHOLD = 2;
   const margin = sideABreakdown - sideBBreakdown;
+  const layerVoteScorecard = calculateLayerVoteScorecard(breakdown);
   const predictedWinner: PredictionResult["predictedWinner"] =
-    Math.abs(margin) < TOO_CLOSE_THRESHOLD ? "too close to call" : margin > 0 ? "A" : "B";
+    layerVoteScorecard.aggregateChoice === "A"
+      ? "A"
+      : layerVoteScorecard.aggregateChoice === "B"
+        ? "B"
+        : "too close to call";
 
   // ──── CONFIDENCE
   // Additive scoring: confidence based on margin size (larger margins = higher confidence)
@@ -532,6 +543,7 @@ export function calculateFullPrediction(chart: ChartData, config: ClusterConfig)
 
   return {
     breakdown,
+    layerVoteScorecard,
     sideATotal: sideABreakdown,
     sideBTotal: sideBBreakdown,
     margin,

@@ -80,18 +80,44 @@ const MAJOR_CITIES = {
 
 type Verdict = "Favorite" | "Challenger" | "Even";
 
+type LayerVote = {
+  layer: string;
+  sideAPoints: number;
+  sideBPoints: number;
+  difference: number | null;
+  supportMagnitude: number | null;
+  choice: "A" | "B" | "tie" | "abstain";
+  status: "eligible" | "tie" | "abstain";
+  reason: string;
+};
+
+type LayerVoteScorecard = {
+  version: "layer-vote-v1";
+  votes: LayerVote[];
+  sideAVotes: number;
+  sideBVotes: number;
+  ties: number;
+  abstentions: number;
+  sideAWeightedSupport: number;
+  sideBWeightedSupport: number;
+  aggregateChoice: "A" | "B" | "no call";
+  aggregateReason: string;
+};
+
 function VerdictBanner({
   verdict,
   score,
   flags,
   favorite,
   challenger,
+  layerVotes,
 }: {
   verdict: Verdict;
   score: number;
   flags: string[];
   favorite: string;
   challenger: string;
+  layerVotes?: LayerVoteScorecard;
 }) {
   const winner =
     verdict === "Favorite"
@@ -113,7 +139,7 @@ function VerdictBanner({
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
           <div className="text-xs uppercase tracking-wide opacity-70">
-            Engine verdict
+            Experimental layer-vote result
           </div>
           <div className="text-2xl font-bold" style={{ color }}>
             {winner}
@@ -121,13 +147,18 @@ function VerdictBanner({
         </div>
         <div className="text-right">
           <div className="text-xs uppercase tracking-wide opacity-70">
-            Composite score
+            {layerVotes ? "Eligible layer choices" : "Raw point audit"}
           </div>
           <div className="text-2xl font-mono font-bold" style={{ color }}>
-            {score > 0 ? `+${score}` : score}
+            {layerVotes ? `${layerVotes.sideAVotes}–${layerVotes.sideBVotes}` : score > 0 ? `+${score}` : score}
           </div>
         </div>
       </div>
+      {layerVotes && (
+        <p className="mt-2 text-xs opacity-75">
+          Side A: {layerVotes.sideAVotes} votes · Side B: {layerVotes.sideBVotes} votes · {layerVotes.ties} ties · {layerVotes.abstentions} abstentions. Raw point margin ({score > 0 ? "+" : ""}{score.toFixed(2)}) is audit evidence only, not the deciding rule.
+        </p>
+      )}
       {flags.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1">
           {flags.map(f => (
@@ -145,6 +176,58 @@ function VerdictBanner({
   );
 }
 
+function LayerVoteAudit({
+  scorecard,
+  favorite,
+  challenger,
+}: {
+  scorecard: LayerVoteScorecard;
+  favorite: string;
+  challenger: string;
+}) {
+  const choiceLabel = (choice: LayerVote["choice"]) =>
+    choice === "A" ? favorite || "Side A" : choice === "B" ? challenger || "Side B" : choice === "tie" ? "Tie" : "Abstain";
+  const choiceColor = (choice: LayerVote["choice"]) =>
+    choice === "A" ? "text-emerald-700 dark:text-emerald-300" : choice === "B" ? "text-rose-700 dark:text-rose-300" : "text-muted-foreground";
+
+  return (
+    <section className="mb-5 rounded-lg border border-border bg-card p-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide">Layer Vote Scorecard</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Each completed layer makes one choice. The aggregate counts eligible choices; it does not blend their point scales.</p>
+        </div>
+        <span className="rounded border border-primary/40 bg-primary/10 px-2 py-1 font-mono text-xs text-primary">{scorecard.version}</span>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+        <div className="rounded bg-muted/50 p-2"><div className="text-xs text-muted-foreground">Side A votes</div><strong>{scorecard.sideAVotes}</strong></div>
+        <div className="rounded bg-muted/50 p-2"><div className="text-xs text-muted-foreground">Side B votes</div><strong>{scorecard.sideBVotes}</strong></div>
+        <div className="rounded bg-muted/50 p-2"><div className="text-xs text-muted-foreground">Ties</div><strong>{scorecard.ties}</strong></div>
+        <div className="rounded bg-muted/50 p-2"><div className="text-xs text-muted-foreground">Abstentions</div><strong>{scorecard.abstentions}</strong></div>
+      </div>
+      <p className="mt-3 text-sm"><strong>Aggregate:</strong> {scorecard.aggregateReason}</p>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full min-w-[620px] text-left text-xs">
+          <thead className="border-b border-border text-muted-foreground">
+            <tr><th className="pb-2 pr-3">Layer</th><th className="pb-2 pr-3">A points</th><th className="pb-2 pr-3">B points</th><th className="pb-2 pr-3">Choice</th><th className="pb-2">Evidence</th></tr>
+          </thead>
+          <tbody>
+            {scorecard.votes.map((vote) => (
+              <tr key={vote.layer} className="border-b border-border/60 last:border-0">
+                <td className="py-2 pr-3 font-medium">{vote.layer}</td>
+                <td className="py-2 pr-3 font-mono">{vote.sideAPoints.toFixed(2)}</td>
+                <td className="py-2 pr-3 font-mono">{vote.sideBPoints.toFixed(2)}</td>
+                <td className={`py-2 pr-3 font-semibold ${choiceColor(vote.choice)}`}>{choiceLabel(vote.choice)}</td>
+                <td className="py-2 text-muted-foreground">{vote.reason}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export default function SportsHorary() {
   const [favorite, setFavorite] = useState("");
   const [challenger, setChallenger] = useState("");
@@ -159,6 +242,7 @@ export default function SportsHorary() {
     score: number;
     flags: string[];
     mapOrientation: "standard" | "inverse-180";
+    layerVotes?: LayerVoteScorecard;
   } | null>(null);
   const [mapOrientation, setMapOrientation] = useState<"standard" | "inverse-180">("standard");
   const [isSpeakingAnswer, setIsSpeakingAnswer] = useState(false);
@@ -214,6 +298,7 @@ export default function SportsHorary() {
         score: data.score,
         flags: data.flags,
         mapOrientation: data.mapOrientation,
+        layerVotes: data.layerVotes as LayerVoteScorecard | undefined,
       });
     },
     onError: err => {
@@ -491,7 +576,15 @@ export default function SportsHorary() {
               flags={result.flags}
               favorite={favorite}
               challenger={challenger}
+              layerVotes={result.layerVotes}
             />
+            {result.layerVotes && (
+              <LayerVoteAudit
+                scorecard={result.layerVotes}
+                favorite={favorite}
+                challenger={challenger}
+              />
+            )}
             {messages.some(m => m.role === "assistant") && (
               <button
                 onClick={handleListen}

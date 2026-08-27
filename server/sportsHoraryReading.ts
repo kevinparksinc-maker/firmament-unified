@@ -114,7 +114,13 @@ function computeAspects(planetsInHouses: ChartData["planetsInHouses"]): ChartDat
 
 export interface SportsHoraryOutput {
   answer: string;
-  score: { score: number; verdict: string; flags: string[]; breakdown: string[] };
+  score: {
+    score: number;
+    verdict: string;
+    flags: string[];
+    breakdown: string[];
+    layerVotes?: ReturnType<typeof calculateFullPrediction>["layerVoteScorecard"];
+  };
   usedChart: "transit" | "natal";
 }
 
@@ -251,34 +257,40 @@ function buildReadingPrompt(
   const margin = Math.abs(prediction.margin);
   const favTotal = prediction.sideATotal;
   const challTotal = prediction.sideBTotal;
-  const isCloseCall = margin < 10;
+  const voteCard = prediction.layerVoteScorecard;
+  const voteRows = voteCard.votes
+    .map((vote) => `• ${vote.layer}: ${vote.choice.toUpperCase()} (${vote.reason})`)
+    .join("\n");
 
   return `You are the Firmament oracle — master of territorial control and celestial verdict.
 
-CRITICAL: Do NOT generate template prose. Do NOT say "dead even" or "both hands empty" if the data shows a clear winner.
+CRITICAL: Do NOT generate template prose. The experimental verdict is determined only by the eligible layer count. A raw-point lead cannot override a tied layer count or turn a no-call into a winner.
 
 ACTUAL ENGINE COMPUTED DATA (reference these exact values in your narration):
 - ${fav} (Side A) Total: ${favTotal.toFixed(2)} points
 - ${chall} (Side B) Total: ${challTotal.toFixed(2)} points
-- Margin: ${margin.toFixed(2)} points
-- Confidence: ${prediction.confidence}%
-- Verdict: ${winner}
-- Call Type: ${isCloseCall ? "Close call" : "Clear call"}
+- Raw point margin (audit only): ${margin.toFixed(2)} points
+- Layer votes: Side A ${voteCard.sideAVotes}; Side B ${voteCard.sideBVotes}; ties ${voteCard.ties}; abstentions ${voteCard.abstentions}
+- Aggregate layer-vote verdict: ${winner}
+- Aggregate reason: ${voteCard.aggregateReason}
+
+LAYER CHOICES (the experimental verdict is determined by eligible vote count, not by raw point totals):
+${voteRows}
 
 SCORING BREAKDOWN (cite these in your reading):
 ${breakdown}
 
 MANDATORY INSTRUCTIONS:
-1. **NEVER say "dead even" if margin is NOT zero.** If margin is ${margin}, explicitly state the gap.
-2. **Reference the actual totals.** Example: "${fav} accumulated ${favTotal.toFixed(1)} points across the cluster, while ${chall} registered ${challTotal.toFixed(1)} — a swing of ${margin.toFixed(1)} in favor of ${favTotal > challTotal ? fav : chall}."
-3. **If lots are scored, reference them.** Don't say "both hands empty" — say which lots landed where and what side they favor.
-4. **Confidence language:** Margin < 5 = "genuine uncertainty"; 5–15 = "moderate edge"; > 15 = "clear advantage"
+1. **State the layer-vote result first.** Give the Side A/Side B eligible counts, ties, and abstentions. Preserve an aggregate no-call even if raw points favor one side.
+2. **Treat raw totals as audit evidence.** You may cite actual totals and their gap in an evidence section, but never use that gap as the decisive result or as a probability.
+3. **If lots are scored, reference them.** State which lots landed where and what they support, without making that raw score a substitute verdict.
+4. **No manufactured certainty:** This is an experimental layer-majority result. State ties and abstentions; do not state a percentage likelihood.
 5. **No generic templates.** Every sentence must trace to the specific numbers above.
 
 STRUCTURE:
-- **The Verdict** (state the winner plainly, cite the margin)
-- **Why** (which houses/lords dominated, reference the breakdown)
-- **Confidence** (tie it to the margin value — don't invent a generic percentage)
+- **The Verdict** (state the aggregate winner or no-call plainly, then the vote count; do not cite the raw margin as the decision)
+- **Layer Vote Audit** (name the layers for each side, ties, abstentions, and the principal conflicts)
+- **Territorial Audit** (which houses/lords/lots accumulated raw points, clearly marked diagnostic only)
 - **Final Word** (one sentence oracle wisdom)
 
 TONE: Direct, specific, data-grounded oracle. Every claim is traceable to a named placement or scored layer above.`;
@@ -348,12 +360,13 @@ export async function sportsHoraryLayer(input: {
 
   return {
     answer: (response.choices[0].message.content as string).trim(),
-    score: {
-      score: prediction.sideATotal - prediction.sideBTotal,
-      verdict,
-      flags: [],
-      breakdown: prediction.breakdown.map(b => `${b.layer}: A=${b.sideAPoints} B=${b.sideBPoints}`)
-    },
+      score: {
+        score: prediction.sideATotal - prediction.sideBTotal,
+        verdict,
+        flags: [],
+        breakdown: prediction.breakdown.map(b => `${b.layer}: A=${b.sideAPoints} B=${b.sideBPoints}`),
+        layerVotes: prediction.layerVoteScorecard,
+      },
     usedChart,
   };
 }

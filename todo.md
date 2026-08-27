@@ -123,3 +123,10 @@
 - [x] Produce a source-backed Frawley event-chart worksheet specification with real event inputs, a named quadrant house calculation, H1/H4/H7/H10 significators, cusp evidence, Moon timing, declared afflictions, and conflict/no-call states.
 - [x] Reconstruct the requested Seattle event from verified game identity, scheduled start, venue, timezone, and team-side mapping before running the experimental sports model.
 - [x] Rerun the current standard and inverse-180 sports paths with the same saved chart input and report all layer contributions, orientation labels, and experimental limitations.
+- [ ] Reconstruct the user-specified Colorado-versus-Twins upset with independently documented pre-game favorite, start time, venue, and final outcome for a fixed current-model replay; the Orioles–Cardinals candidate was discarded before calculation.
+- [ ] Run standard and inverse-180 current sports calculations with the pre-game favorite assigned to Side A, then record layer totals and compare them with the verified upset result.
+- [ ] Assess whether territorial control and KP Stellar layers favor the home/Favorite side in the new upset replay, without changing weights after the result is known.
+- [x] Inventory every active sports layer and determine whether it has enough independent evidence to issue Side A, Side B, tie, or abstain rather than contributing only a blended total.
+- [x] Define a versioned layer-vote contract with raw layer totals, directional pick, declared point weight, reason/evidence, completeness status, and no-vote conditions.
+- [x] Build an experimental aggregate scorecard that totals only eligible layer votes, separates standard from inverse orientation, and emits conflict/no-call rather than manufactured certainty.
+- [ ] Record and evaluate per-layer picks, weighted aggregate picks, abstentions, and opposite-orientation agreement separately on frozen historical events before recalibrating any layer weights.

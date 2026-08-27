@@ -908,6 +908,7 @@ const sportsHoraryRouter = router({
         verdict: result.verdict,
         flags: result.flags,
         usedChart: result.usedChart,
+        layerVotes: result.layerVotes,
         territorialControl: result.territorialControl,
       };
     }),

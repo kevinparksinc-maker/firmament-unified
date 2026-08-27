@@ -54,6 +54,7 @@ export interface SportsHoraryV2Output {
   usedChart: "transit" | "natal";
   mapOrientation: SportsMapOrientation;
   margin: number;
+  layerVotes?: ReturnType<typeof calculateFullPrediction>["layerVoteScorecard"];
   territorialControl: {
     sideATotal: number;
     sideBTotal: number;
@@ -81,17 +82,25 @@ function buildReadingPrompt(
   const margin = Math.abs(result.margin);
   const favTotal = result.sideATotal;
   const challTotal = result.sideBTotal;
+  const voteCard = result.layerVoteScorecard;
+  const voteRows = voteCard.votes
+    .map((vote) => `  ${vote.layer}: ${vote.choice.toUpperCase()} (${vote.reason})`)
+    .join("\n");
 
   return `You are the Firmament sports oracle, reading a horary chart cast for a contest through the sidereal, traditional-Vedic framework (fixed dome sky, Vedic rulers, fixed stars, territorial control).
 
-CRITICAL: Do NOT generate template prose. Do NOT say territories are "even" if the data shows a clear advantage.
+CRITICAL: Do NOT generate template prose. The experimental verdict is determined only by the eligible layer count. A raw-point lead must never override a tied layer count or turn a no-call into a winner.
 
 ACTUAL COMPUTED DATA (cite these exact values):
 - ${fav} (Side A) Total: ${favTotal.toFixed(2)} points
 - ${chall} (Side B) Total: ${challTotal.toFixed(2)} points
-- Margin: ${margin.toFixed(2)} points
-- Confidence: ${result.confidence}%
+- Raw point margin (audit only): ${margin.toFixed(2)} points
+- Layer votes: Side A ${voteCard.sideAVotes}; Side B ${voteCard.sideBVotes}; ties ${voteCard.ties}; abstentions ${voteCard.abstentions}
 - Verdict: ${winner}
+- Aggregate reason: ${voteCard.aggregateReason}
+
+LAYER CHOICES (the experimental verdict is determined by eligible vote count, not by raw point totals):
+${voteRows}
 
 CONTEST:
 - FAVORITE: ${fav}
@@ -102,16 +111,16 @@ TERRITORIAL SCORING LAYERS (reference these):
 ${breakdown}
 
 MANDATORY:
-1. **Never say "even territory" if margin ≠ 0.** Cite the actual totals: "${fav} holds ${favTotal.toFixed(1)}, ${chall} holds ${challTotal.toFixed(1)} — a gap of ${margin.toFixed(1)}."
-2. **Reference specific lots.** State which lots landed where and their impact, don't generalize.
-3. **Confidence tie-in:** Margin < 5 = "too close"; 5–15 = "slight edge"; > 15 = "strong dominion"
-4. **Every sentence traces to the data above.** No generic oracle boilerplate.
+1. **Lead with the layer-count verdict.** State Side A votes, Side B votes, ties, and abstentions. If the aggregate verdict is "Neither — too close to call," preserve that no-call even when one side has more raw points.
+2. **Raw totals are audit evidence only.** You may state the actual territorial totals and their gap in the Territorial Audit section, but never use that gap as the decisive result or as a probability.
+3. **Reference specific lots.** State which lots landed where and their impact, without generalizing their result into the overall winner.
+4. **Every sentence traces to the data above.** No generic oracle boilerplate and no claim that a tied/abstaining layer favors either side.
 
 WRITE THE READING:
-1. **The Verdict:** State the winner plainly + cite the margin in points.
-2. **Territorial Dominance:** Which side accumulated more, why (lords, lots, friction multipliers).
-3. **Major Shifts:** Any reversals or displaced lords that swung the contest.
-4. **Confidence Statement:** Tie it directly to the margin—don't invent certainty you don't have.
+1. **The Verdict:** State the aggregate winner or no-call plainly, then cite the eligible vote count, ties, and abstentions. Do not cite the point margin as the decision.
+2. **Layer Vote Audit:** Name the layers that choose each side and explain the material conflict or abstention.
+3. **Territorial Audit:** Explain the raw territory, lords, lots, and friction multipliers as diagnostic evidence only. Cite any raw gap accurately, but state that it does not decide the result.
+4. **Major Shifts:** Note reversals or displaced lords that explain a layer's choice, without converting a raw total into a different verdict.
 
 TONE: Direct, specific, grounded in the data. Every claim is checkable against the layers above.
 
@@ -215,6 +224,7 @@ export async function sportsHoraryV2Layer(
     usedChart,
     mapOrientation,
     margin: prediction.margin,
+    layerVotes: prediction.layerVoteScorecard,
     territorialControl,
   };
 }
