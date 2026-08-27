@@ -54,6 +54,7 @@ const nakshatraNames = [
 ];
 
 const step = 360 / 27;
+const BOUNDARY_EPSILON = 1e-10;
 
 function absToSignDeg(abs: number): string {
   const signs = [
@@ -97,10 +98,16 @@ export function getNakshatraAt(absDeg: number): {
   nakshatra: Nakshatra;
   pada: number;
 } {
-  let deg = ((absDeg % 360) + 360) % 360;
-  const nakshatra = NAKSHATRAS.find(n => deg >= n.startAbs && deg < n.endAbs)!;
+  const deg = ((absDeg % 360) + 360) % 360;
+  // JavaScript's modulo can represent a mathematically exact repeating-decimal
+  // boundary (for example 360 / 27) a few ulps below that boundary. The tiny
+  // guard preserves the declared half-open intervals: boundary belongs to the
+  // next mansion; it is not an expanded interpretive orb.
+  const boundaryAdjusted = Math.min(360 - BOUNDARY_EPSILON, deg + BOUNDARY_EPSILON);
+  const mansionIndex = Math.floor(boundaryAdjusted / step);
+  const nakshatra = NAKSHATRAS[mansionIndex]!;
   const padaSize = step / 4;
-  const offset = deg - nakshatra.startAbs;
-  const pada = Math.floor(offset / padaSize) + 1;
+  const offset = boundaryAdjusted - nakshatra.startAbs;
+  const pada = Math.min(4, Math.floor(offset / padaSize) + 1);
   return { nakshatra, pada };
 }

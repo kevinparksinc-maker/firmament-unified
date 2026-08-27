@@ -340,7 +340,7 @@ export interface StarConjunction {
 export function detectFixedStarConjunctions(
   placements: Record<
     string,
-    { sign: string; degree: number; planet: string; absolute: number | null }
+    { sign: string; degree: number; planet: string; eclipticLon: number | null; absolute?: number | null }
   >
 ): StarConjunction[] {
   const conjunctions: StarConjunction[] = [];
