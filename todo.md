@@ -54,3 +54,14 @@
 - [x] Add MC (Midheaven) and IC to ephemeris output
 - [x] Build 2D SVG house wheel component showing all 12 houses with sign cusps and planet placements
 - [x] Show the wheel after birth data calculation
+
+## Recovered engine layer port
+
+- [x] Define a source-neutral read-only evidence contract for recovered Sports Horary layers
+- [x] Port recovered extension evidence with explicit provenance and limitations
+- [ ] Reconcile fixed-star and KP evidence with the existing topocentric geometry contract
+- [ ] Preserve separate God View, Agent View, and inverse-180 frame rules
+- [x] Add explicit opt-in scoring switches without changing the default live path
+- [x] Add layer unit tests and disabled-score invariance coverage
+- [ ] Rerun the full test suite and Tyson–Douglas benchmark after integration
+- [x] Document experimental, unavailable, and intentionally separate layers
