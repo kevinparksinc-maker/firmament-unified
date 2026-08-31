@@ -93,7 +93,182 @@ function formatClusterEqualHouseChart(planets: any[], ascendant: number): string
 
 type Verdict = "Favorite" | "Challenger" | "Even";
 
+type CoordinateComparisonPoint = {
+  name: string;
+  longitude: number;
+  sign: string;
+  degreeInSign: number;
+  house: number;
+  rightAscension?: number;
+  declination?: number;
+  azimuth?: number;
+  altitude?: number;
+  mapX: number;
+  mapY: number;
+};
+
+type CoordinateComparisonResult = {
+  event: { venueName: string; latitude: number; longitude: number; timezone: string; local: { year: number; month: number; day: number; hour: number; minute: number }; utcIso: string };
+  domeModel: { id: string; ephemeris: string; axes: string; houseSystem: string; projection: string; ascendant: number; midheaven: number; points: CoordinateComparisonPoint[] };
+  conventionalTropicalReference: { ephemeris: string; houseSystem: string; houseEngine: string; ascendant: number; midheaven: number; points: CoordinateComparisonPoint[] };
+  boundary: string;
+};
+
+const circularDifference = (first: number, second: number) => {
+  const raw = Math.abs(normalizeLongitude(first) - normalizeLongitude(second));
+  return raw > 180 ? 360 - raw : raw;
+};
+
+function CoordinateMapPreview({ title, subtitle, points, projection }: { title: string; subtitle: string; points: CoordinateComparisonPoint[]; projection: string }) {
+  return <section className="rounded-xl border border-primary/30 bg-card/70 p-3">
+    <h3 className="text-sm font-semibold">{title}</h3>
+    <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+    <div className="relative mx-auto mt-3 aspect-square w-full max-w-[330px] overflow-hidden rounded-full border border-primary/45 bg-[radial-gradient(circle_at_center,_hsl(var(--primary)/0.16),_transparent_52%),linear-gradient(145deg,_hsl(var(--background)),_hsl(var(--muted)/0.7))]">
+      <span className="absolute left-1/2 top-2 -translate-x-1/2 text-[10px] font-semibold text-primary">N</span>
+      <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/40 bg-background/80 px-1.5 py-0.5 text-[9px] text-muted-foreground">center</span>
+      {[25, 50, 75].map(size => <span key={size} className="absolute rounded-full border border-primary/15" style={{ width: `${size}%`, height: `${size}%`, left: `${(100 - size) / 2}%`, top: `${(100 - size) / 2}%` }} />)}
+      {points.map(point => <span key={point.name} title={`${point.name}: ${point.degreeInSign.toFixed(2)}° ${point.sign}`} className="absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-primary/70 bg-background/95 px-1 font-mono text-[9px] font-semibold text-primary shadow-sm" style={{ left: `${Math.max(3, Math.min(97, point.mapX))}%`, top: `${Math.max(3, Math.min(97, point.mapY))}%` }}>{point.name.slice(0, 2)}</span>)}
+    </div>
+    <p className="mt-2 text-center text-[10px] text-muted-foreground">Projection: {projection}. Dot labels are decoded in the placement table below.</p>
+  </section>;
+}
+
+function CoordinateComparisonPanel({ comparison }: { comparison: CoordinateComparisonResult }) {
+  const conventionalByName = new Map(comparison.conventionalTropicalReference.points.map(point => [point.name, point]));
+  return <section className="mb-4 overflow-hidden rounded-xl border border-primary/50 bg-primary/5">
+    <div className="border-b border-primary/30 bg-primary/10 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Coordinate comparison — inspection only</p>
+      <h2 className="mt-1 text-lg font-semibold">Declared dome-model view vs conventional tropical reference</h2>
+      <p className="mt-2 text-xs text-muted-foreground">Shared event input: {comparison.event.venueName}, {comparison.event.local.year}-{String(comparison.event.local.month).padStart(2, "0")}-{String(comparison.event.local.day).padStart(2, "0")} {String(comparison.event.local.hour).padStart(2, "0")}:{String(comparison.event.local.minute).padStart(2, "0")} {comparison.event.timezone}; {comparison.event.latitude.toFixed(4)}°, {comparison.event.longitude.toFixed(4)}°; UTC {comparison.event.utcIso}.</p>
+      <p className="mt-2 rounded border border-primary/25 bg-background/65 p-2 text-xs text-muted-foreground">{comparison.boundary}</p>
+    </div>
+    <div className="grid gap-3 p-4 lg:grid-cols-2">
+      <CoordinateMapPreview title="Declared dome-model map" subtitle={`${comparison.domeModel.axes} ${comparison.domeModel.houseSystem}`} points={comparison.domeModel.points} projection="RA / declination Gleason polar" />
+      <CoordinateMapPreview title="Conventional tropical map" subtitle={`${comparison.conventionalTropicalReference.ephemeris} ${comparison.conventionalTropicalReference.houseSystem}`} points={comparison.conventionalTropicalReference.points} projection="tropical ecliptic wheel" />
+    </div>
+    <div className="overflow-x-auto border-t border-primary/30">
+      <table className="w-full min-w-[1050px] text-left text-xs">
+        <thead className="bg-muted/45 text-muted-foreground"><tr><th className="px-3 py-2 font-medium">Body</th><th className="px-3 py-2 font-medium">Dome longitude / sign</th><th className="px-3 py-2 font-medium">Dome Equal House</th><th className="px-3 py-2 font-medium">Dome local sky</th><th className="px-3 py-2 font-medium">Conventional longitude / sign</th><th className="px-3 py-2 font-medium">Conventional Placidus House</th><th className="px-3 py-2 font-medium">Longitude separation</th></tr></thead>
+        <tbody>{comparison.domeModel.points.map(dome => {
+          const conventional = conventionalByName.get(dome.name);
+          if (!conventional) return null;
+          return <tr key={dome.name} className="border-t border-border/60"><td className="px-3 py-2 font-semibold">{dome.name}</td><td className="px-3 py-2 font-mono">{dome.longitude.toFixed(4)}°<br />{dome.degreeInSign.toFixed(2)}° {dome.sign}</td><td className="px-3 py-2">H{dome.house}</td><td className="px-3 py-2 font-mono">RA {dome.rightAscension?.toFixed(3) ?? "—"}h · Dec {dome.declination?.toFixed(2) ?? "—"}°<br />Az {dome.azimuth?.toFixed(2) ?? "—"}° · Alt {dome.altitude?.toFixed(2) ?? "—"}°</td><td className="px-3 py-2 font-mono">{conventional.longitude.toFixed(4)}°<br />{conventional.degreeInSign.toFixed(2)}° {conventional.sign}</td><td className="px-3 py-2">H{conventional.house}</td><td className="px-3 py-2 font-mono">{circularDifference(dome.longitude, conventional.longitude).toFixed(4)}°</td></tr>;
+        })}</tbody>
+      </table>
+    </div>
+    <div className="grid gap-3 border-t border-primary/30 p-4 text-xs text-muted-foreground lg:grid-cols-2"><p><strong className="text-foreground">Dome axes:</strong> ASC {comparison.domeModel.ascendant.toFixed(4)}° · MC {comparison.domeModel.midheaven.toFixed(4)}°. {comparison.domeModel.ephemeris}</p><p><strong className="text-foreground">Conventional reference axes:</strong> ASC {comparison.conventionalTropicalReference.ascendant.toFixed(4)}° · MC {comparison.conventionalTropicalReference.midheaven.toFixed(4)}°. Engine: {comparison.conventionalTropicalReference.houseEngine}.</p></div>
+  </section>;
+}
+
+type SeasonalRadiusAuditResult = {
+  method: string;
+  scoring: string;
+  result: {
+    radiusCancerMiles: number;
+    radiusCapricornMiles: number;
+    radiusEquinoxMiles: number;
+    solarRadiusMiles: number;
+    angularVelocityDegreesPerHour: number;
+    localSiderealAngleDegrees: number;
+    observerDistanceFromPoleMiles: number;
+    seasonalBearingOffsetDegrees: number;
+    ascendantDegrees: number;
+    apparentSizeRelativeToEquinox: number;
+    distanceIntensityRelativeToEquinox: number;
+    daylightBoundaryProxyDegrees: number;
+  };
+};
+
+function SeasonalRadiusAuditPanel({
+  audit,
+  eventDate,
+  localSiderealAngle,
+  observerDistance,
+  setLocalSiderealAngle,
+  setObserverDistance,
+  onRun,
+  isPending,
+}: {
+  audit: SeasonalRadiusAuditResult | null;
+  eventDate: string;
+  localSiderealAngle: string;
+  observerDistance: string;
+  setLocalSiderealAngle: (value: string) => void;
+  setObserverDistance: (value: string) => void;
+  onRun: () => void;
+  isPending: boolean;
+}) {
+  const values = audit?.result;
+  return <section className="mb-4 overflow-hidden rounded-xl border border-amber-500/40 bg-amber-500/5">
+    <div className="border-b border-amber-500/25 bg-amber-500/10 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">Experimental dome audit — no scoring</p>
+      <h2 className="mt-1 text-lg font-semibold">Ancient-Horizon / Seasonal Solar-Radius</h2>
+      <p className="mt-2 text-xs text-muted-foreground">This separate path uses the declared 1,600-mile Cancer and 2,900-mile Capricorn radii. It does not overwrite the existing dome chart or any sports method. Sunrise and sunset clock times are not inferred; the boundary value shown is an explicitly labeled proxy.</p>
+    </div>
+    <div className="grid gap-2 p-4 sm:grid-cols-3">
+      <label className="text-xs">Local model angle (degrees)<input type="number" step="any" value={localSiderealAngle} onChange={event => setLocalSiderealAngle(event.target.value)} className="mt-1 w-full rounded border border-border bg-background p-2 text-sm" /></label>
+      <label className="text-xs">Observer distance from pole (miles)<input type="number" step="any" min="1600.01" value={observerDistance} onChange={event => setObserverDistance(event.target.value)} className="mt-1 w-full rounded border border-border bg-background p-2 text-sm" /></label>
+      <div className="flex items-end"><button type="button" onClick={onRun} disabled={!eventDate || isPending} className="w-full rounded border border-amber-500/50 bg-amber-500/15 px-3 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-50 dark:text-amber-100">{isPending ? "Calculating…" : "Run seasonal audit"}</button></div>
+    </div>
+    {values && <div className="overflow-x-auto border-t border-amber-500/25"><table className="w-full min-w-[760px] text-left text-xs"><thead className="bg-muted/45 text-muted-foreground"><tr><th className="px-3 py-2">Audit field</th><th className="px-3 py-2">Value</th><th className="px-3 py-2">Rule / interpretation</th></tr></thead><tbody>
+      <tr className="border-t border-border/60"><td className="px-3 py-2 font-medium">Solar radius</td><td className="px-3 py-2 font-mono">{values.solarRadiusMiles.toFixed(4)} mi</td><td className="px-3 py-2 text-muted-foreground">Seasonal interpolation between Cancer {values.radiusCancerMiles} and Capricorn {values.radiusCapricornMiles} miles</td></tr>
+      <tr className="border-t border-border/60"><td className="px-3 py-2 font-medium">Angular velocity</td><td className="px-3 py-2 font-mono">{values.angularVelocityDegreesPerHour.toFixed(6)}°/hour</td><td className="px-3 py-2 text-muted-foreground">15 × equinox radius ÷ seasonal radius</td></tr>
+      <tr className="border-t border-border/60"><td className="px-3 py-2 font-medium">Bearing offset</td><td className="px-3 py-2 font-mono">{values.seasonalBearingOffsetDegrees.toFixed(6)}°</td><td className="px-3 py-2 text-muted-foreground">Radius-to-observer scaling substitute for declination</td></tr>
+      <tr className="border-t border-border/60"><td className="px-3 py-2 font-medium">Ancient-Horizon Ascendant</td><td className="px-3 py-2 font-mono font-semibold text-primary">{values.ascendantDegrees.toFixed(6)}°</td><td className="px-3 py-2 text-muted-foreground">atan2 horizon equation with bearing offset substituted for obliquity</td></tr>
+      <tr className="border-t border-border/60"><td className="px-3 py-2 font-medium">Relative apparent size</td><td className="px-3 py-2 font-mono">{values.apparentSizeRelativeToEquinox.toFixed(6)}×</td><td className="px-3 py-2 text-muted-foreground">Inverse-distance proxy normalized to equinox</td></tr>
+      <tr className="border-t border-border/60"><td className="px-3 py-2 font-medium">Relative distance intensity</td><td className="px-3 py-2 font-mono">{values.distanceIntensityRelativeToEquinox.toFixed(6)}×</td><td className="px-3 py-2 text-muted-foreground">Inverse-square proxy normalized to equinox</td></tr>
+      <tr className="border-t border-border/60"><td className="px-3 py-2 font-medium">Daylight boundary proxy</td><td className="px-3 py-2 font-mono">{values.daylightBoundaryProxyDegrees.toFixed(6)}°</td><td className="px-3 py-2 text-muted-foreground">Not a sunrise/sunset clock time; geometry remains unspecified</td></tr>
+    </tbody></table></div>}
+  </section>;
+}
+
+type FirmamentGeometryAudit = {
+  method: string;
+  scoring: string;
+  contract: { projection: string; houses: string; seasonalRadius: string; provenance: string };
+  seasonalRadius: { radius: number; cancerRadius: number; capricornRadius: number; dayOfYear: number; model: string };
+  positions: Array<{ body: string; azimuth: number; radius: number; normalizedAzimuth: number; house: number; calculationMode: string; sourceCoordinate?: string; coordinateEpoch?: string; projected: { x: number; y: number } }>;
+  aspects: Array<{ first: string; second: string; result: { angularSeparation: number; radialSeparation: number; isAngularAspect: boolean; isRadiallyStrong: boolean } }>;
+};
+
+function FirmamentGeometryAuditPanel({ audit, positionsJson, setPositionsJson, onRun, isPending }: { audit: FirmamentGeometryAudit | null; positionsJson: string; setPositionsJson: (value: string) => void; onRun: () => void; isPending: boolean }) {
+  return <section className="mb-4 overflow-hidden rounded-xl border border-cyan-500/40 bg-cyan-500/5">
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-cyan-500/25 bg-cyan-500/10 p-4">
+      <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700 dark:text-cyan-300">Firmament geometry — audit only</p><h2 className="mt-1 text-lg font-semibold">Fixed projection, houses, and radial aspect strength</h2><p className="mt-2 max-w-3xl text-xs text-muted-foreground">This panel preserves each source’s provenance and applies the fixed North/East/South/West frame. It does not alter Territorial, KP, Frawley, Tajika, or God–Agent scores.</p></div>
+      <button type="button" onClick={onRun} disabled={isPending || !positionsJson.trim()} className="rounded border border-cyan-500/50 bg-cyan-500/15 px-3 py-2 text-xs font-semibold text-cyan-900 hover:bg-cyan-500/25 disabled:opacity-50 dark:text-cyan-100">{isPending ? "Auditing…" : "Run geometry audit"}</button>
+    </div>
+    <div className="border-b border-cyan-500/25 p-4"><label className="text-xs font-semibold">Verified Firmament positions (JSON)<textarea value={positionsJson} onChange={(event) => setPositionsJson(event.target.value)} placeholder='[{"body":"Sun","azimuth":90,"radius":1600,"sourceCoordinate":"topocentric azimuth","calculationMode":"zetetic-sky"}]' className="mt-1 min-h-24 w-full rounded border border-border bg-background p-2 font-mono text-xs" /><span className="mt-1 block text-[11px] text-muted-foreground">Each row requires body, azimuth, radius, sourceCoordinate, and calculationMode. Radius is never inferred from screen coordinates.</span></label></div>
+    {audit ? <><div className="grid gap-2 border-b border-cyan-500/25 p-4 text-xs sm:grid-cols-2 lg:grid-cols-4"><div><span className="text-muted-foreground">Projection</span><strong className="block">{audit.contract.projection}</strong></div><div><span className="text-muted-foreground">House direction</span><strong className="block">{audit.contract.houses}</strong></div><div><span className="text-muted-foreground">Seasonal radius</span><strong className="block">{audit.seasonalRadius.radius.toFixed(2)} units</strong></div><div><span className="text-muted-foreground">Source boundary</span><strong className="block">{audit.contract.provenance}</strong></div></div><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-xs"><thead className="bg-muted/45 text-muted-foreground"><tr><th className="px-3 py-2">Body</th><th className="px-3 py-2">Azimuth / radius</th><th className="px-3 py-2">Fixed house</th><th className="px-3 py-2">Projected x / y</th><th className="px-3 py-2">Source mode</th><th className="px-3 py-2">Source coordinate</th></tr></thead><tbody>{audit.positions.map((position) => <tr key={position.body} className="border-t border-border/60"><td className="px-3 py-2 font-semibold">{position.body}</td><td className="px-3 py-2 font-mono">{position.normalizedAzimuth.toFixed(4)}° / {position.radius.toFixed(4)}</td><td className="px-3 py-2">H{position.house}</td><td className="px-3 py-2 font-mono">{position.projected.x.toFixed(2)} / {position.projected.y.toFixed(2)}</td><td className="px-3 py-2">{position.calculationMode}</td><td className="px-3 py-2 text-muted-foreground">{position.sourceCoordinate ?? "not supplied"}</td></tr>)}</tbody></table></div><div className="border-t border-cyan-500/25 p-4"><h3 className="text-sm font-semibold">Radial aspect evidence</h3><p className="mt-1 text-xs text-muted-foreground">Angular aspects and radial closeness are reported independently; radial strength is not silently converted into a prediction point.</p><div className="mt-2 grid gap-2 sm:grid-cols-2">{audit.aspects.filter((aspect) => aspect.result.isAngularAspect || aspect.result.isRadiallyStrong).map((aspect) => <div key={`${aspect.first}-${aspect.second}`} className="rounded border border-border/60 bg-background/40 p-2 text-xs"><strong>{aspect.first} × {aspect.second}</strong><div className="font-mono text-muted-foreground">angular {aspect.result.angularSeparation.toFixed(3)}° · radial {aspect.result.radialSeparation.toFixed(3)}</div><div>{aspect.result.isAngularAspect ? "Angular aspect" : "No angular aspect"} · {aspect.result.isRadiallyStrong ? "Radially strong" : "Not radially strong"}</div></div>)}{audit.aspects.every((aspect) => !aspect.result.isAngularAspect && !aspect.result.isRadiallyStrong) && <p className="text-xs text-muted-foreground">No qualifying angular or radial pair under the declared thresholds.</p>}</div></div></> : <p className="p-4 text-xs text-muted-foreground">Run the audit after a coordinate comparison has been calculated.</p>}
+  </section>;
+}
+
+function GodAgentSeasonalSynergyPanel({
+  result,
+  onRun,
+  isPending,
+}: { result: any; onRun: () => void; isPending: boolean }) {
+  const synthesis = result?.result?.synthesis;
+  const rows = result?.result?.agentView?.rows ?? [];
+  const aspects = result?.result?.aspects ?? [];
+  const houses = result?.result?.agentView?.houses ?? [];
+  return <section className="mb-4 overflow-hidden rounded-xl border border-sky-500/40 bg-sky-500/5">
+    <div className="border-b border-sky-500/25 bg-sky-500/10 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300">God–Agent synergy — separate synthesis</p>
+      <h2 className="mt-1 text-lg font-semibold">Fixed background × topocentric lineup</h2>
+      <p className="mt-2 text-xs text-muted-foreground">God View supplies fixed-background RA sectors. Agent View uses the same event’s topocentric planetary record and Ancient-Horizon Equal Houses. The synthesis counts matching support and cross-view conflict; it does not blend Frawley, KP, Cluster, or Placidus.</p>
+      <button type="button" onClick={onRun} disabled={isPending} className="mt-3 rounded border border-sky-500/50 bg-sky-500/15 px-3 py-2 text-sm font-semibold text-sky-900 hover:bg-sky-500/25 disabled:opacity-50 dark:text-sky-100">{isPending ? "Calculating…" : "Run God–Agent synthesis"}</button>
+    </div>
+    {synthesis && <div className="grid gap-2 border-b border-sky-500/25 p-4 text-xs sm:grid-cols-4"><div><strong>Side A support</strong><br />{synthesis.sideASupport}</div><div><strong>Side B support</strong><br />{synthesis.sideBSupport}</div><div><strong>Net energy</strong><br />A {synthesis.sideANetEnergy} · B {synthesis.sideBNetEnergy}</div><div><strong>Synthesis state</strong><br />{synthesis.state} · {synthesis.polarity}</div></div>}
+    {houses.length > 0 && <div className="border-b border-sky-500/25 p-4"><div className="flex items-start justify-between gap-3 flex-wrap"><div><h3 className="text-sm font-semibold">Complete event chart — H1 through H12</h3><p className="mt-1 text-xs text-muted-foreground">Every house is shown by its exact 30° Ancient-Horizon Equal-House span, family assignment, and the topocentric planets inside it.</p></div><span className="rounded border border-border px-2 py-1 font-mono text-[10px] uppercase text-muted-foreground">{result?.result?.agentView?.houseSystem}</span></div><div className="mt-3 overflow-x-auto"><table className="w-full min-w-[980px] text-left text-xs"><thead className="bg-muted/45 text-muted-foreground"><tr><th className="px-3 py-2">House</th><th className="px-3 py-2">Sign span</th><th className="px-3 py-2">Longitude span</th><th className="px-3 py-2">Family</th><th className="px-3 py-2">Planets inside house</th></tr></thead><tbody>{houses.map((house: any) => <tr key={house.house} className="border-t border-border/60"><td className="px-3 py-2 font-semibold">H{house.house}</td><td className="px-3 py-2">{house.startSign} {house.startDegree.toFixed(2)}° → {house.endSign} {house.endDegree.toFixed(2)}°</td><td className="px-3 py-2 font-mono">{house.startLongitude.toFixed(4)}° → {house.endLongitude.toFixed(4)}°</td><td className="px-3 py-2">{house.family}</td><td className="px-3 py-2">{house.planets.length === 0 ? <span className="text-muted-foreground">Empty</span> : house.planets.map((planet: any) => <span key={planet.planet} className="mr-3 inline-block"><strong>{planet.planet}</strong> <span className="font-mono">{planet.rawLongitude.toFixed(4)}°</span> <span className="text-muted-foreground">({planet.sign} {planet.degreeInSign.toFixed(2)}°)</span></span>)}</td></tr>)}</tbody></table></div></div>}
+    {rows.length > 0 && <div className="overflow-x-auto"><table className="w-full min-w-[920px] text-left text-xs"><thead className="bg-muted/45 text-muted-foreground"><tr><th className="px-3 py-2">Planet</th><th className="px-3 py-2">God fixed sector</th><th className="px-3 py-2">Topocentric raw longitude</th><th className="px-3 py-2">Ancient-Horizon house</th><th className="px-3 py-2">Agent family</th><th className="px-3 py-2">Synergy cell</th><th className="px-3 py-2">A/B energy</th></tr></thead><tbody>{rows.map((row: any) => <tr key={row.planet} className="border-t border-border/60"><td className="px-3 py-2 font-medium">{row.planet}</td><td className="px-3 py-2">{row.godSector}</td><td className="px-3 py-2 font-mono">{row.agentRawLongitude.toFixed(4)}° · {row.agentSign} {row.agentDegreeInSign.toFixed(2)}°</td><td className="px-3 py-2">H{row.agentHouse}</td><td className="px-3 py-2">{row.agentFamily}</td><td className="px-3 py-2 font-mono">{row.synergyCell}</td><td className="px-3 py-2 font-mono">A +{row.sideASupport}/−{row.sideAConflict} · B +{row.sideBSupport}/−{row.sideBConflict}</td></tr>)}</tbody></table></div>}
+      {result?.result?.aspects && <div className="border-t border-sky-500/25 p-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap"><div><h3 className="text-sm font-semibold">Planetary aspects</h3><p className="mt-1 text-xs text-muted-foreground">Major aspects from the same topocentric Agent longitudes. These are visible audit context only and do not change God–Agent energy.</p></div><span className="rounded border border-border px-2 py-1 font-mono text-[10px] uppercase text-muted-foreground">{aspects.length} found · unscored</span></div>
+      {aspects.length === 0 ? <p className="mt-3 text-xs text-muted-foreground">No declared major aspect falls within the configured orb.</p> : <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[900px] text-left text-xs"><thead className="bg-muted/45 text-muted-foreground"><tr><th className="px-3 py-2">Pair</th><th className="px-3 py-2">Aspect</th><th className="px-3 py-2">Separation</th><th className="px-3 py-2">Orb</th><th className="px-3 py-2">God sectors</th><th className="px-3 py-2">Agent families</th><th className="px-3 py-2">Motion</th></tr></thead><tbody>{aspects.map((aspect: any) => <tr key={`${aspect.first}-${aspect.second}-${aspect.type}`} className="border-t border-border/60"><td className="px-3 py-2 font-medium">{aspect.first} / {aspect.second}</td><td className="px-3 py-2">{aspect.type} {aspect.exactAngle}°</td><td className="px-3 py-2 font-mono">{aspect.separation.toFixed(3)}°</td><td className="px-3 py-2 font-mono">{aspect.orb.toFixed(3)}°</td><td className="px-3 py-2">{aspect.firstGodSector} / {aspect.secondGodSector}</td><td className="px-3 py-2">{aspect.firstAgentFamily} / {aspect.secondAgentFamily}</td><td className="px-3 py-2">{aspect.motionState}</td></tr>)}</tbody></table></div>}
+    </div>}
+  </section>;
+}
 type LayerVote = {
+
   layer: string;
   sideAPoints: number;
   sideBPoints: number;
@@ -657,6 +832,13 @@ export default function SportsHorary() {
   const [protocolRuns, setProtocolRuns] = useState<ProtocolLedgerRun[]>([]);
   const [isSpeakingAnswer, setIsSpeakingAnswer] = useState(false);
   const [calculatedChart, setCalculatedChart] = useState<any>(null);
+  const [coordinateComparison, setCoordinateComparison] = useState<CoordinateComparisonResult | null>(null);
+  const [seasonalRadiusAudit, setSeasonalRadiusAudit] = useState<SeasonalRadiusAuditResult | null>(null);
+  const [localSiderealAngle, setLocalSiderealAngle] = useState("0");
+  const [observerDistance, setObserverDistance] = useState("4000");
+  const [godAgentSeasonalSynergy, setGodAgentSeasonalSynergy] = useState<any>(null);
+  const [firmamentGeometryAudit, setFirmamentGeometryAudit] = useState<FirmamentGeometryAudit | null>(null);
+  const [firmamentPositionsJson, setFirmamentPositionsJson] = useState("");
 
   const calculateChart = trpc.ephemeris.calculate.useMutation({
     onSuccess: data => {
@@ -685,6 +867,39 @@ export default function SportsHorary() {
       ]);
     },
   });
+
+  const runSeasonalRadiusAudit = trpc.sportsHorary.seasonalRadiusAudit.useMutation({
+    onSuccess: data => setSeasonalRadiusAudit(data as SeasonalRadiusAuditResult),
+    onError: error => setMessages(previous => [...previous, { role: "assistant", content: `Seasonal-radius audit could not run: ${error.message}` }]),
+  });
+
+  const runGodAgentSeasonalSynergy = trpc.sportsHorary.godAgentSeasonalSynergy.useMutation({
+    onSuccess: data => setGodAgentSeasonalSynergy(data),
+    onError: error => setMessages(previous => [...previous, { role: "assistant", content: `God–Agent synergy could not run: ${error.message}` }]),
+  });
+
+  const calculateCoordinateComparison = trpc.coordinateComparison.calculate.useMutation({
+    onSuccess: data => setCoordinateComparison(data as CoordinateComparisonResult),
+    onError: error => setMessages(previous => [...previous, { role: "assistant", content: `Coordinate comparison could not run: ${error.message}` }]),
+  });
+
+  const runFirmamentGeometryAudit = trpc.sportsHorary.firmamentGeometryAudit.useMutation({
+    onSuccess: data => setFirmamentGeometryAudit(data as FirmamentGeometryAudit),
+    onError: error => setMessages(previous => [...previous, { role: "assistant", content: `Firmament geometry audit could not run: ${error.message}` }]),
+  });
+
+  const handleFirmamentGeometryAudit = () => {
+    try {
+      const positions = JSON.parse(firmamentPositionsJson);
+      if (!Array.isArray(positions) || positions.length === 0) throw new Error("Enter at least one verified position row.");
+      const event = eventDate ? new Date(`${eventDate}T00:00:00Z`) : new Date();
+      const start = new Date(Date.UTC(event.getUTCFullYear(), 0, 0));
+      const dayOfYear = Math.floor((event.getTime() - start.getTime()) / 86_400_000);
+      runFirmamentGeometryAudit.mutate({ center: { cx: 50, cy: 50 }, positions, dayOfYear, angularOrbDeg: 4.5, radialThreshold: 100 });
+    } catch (error) {
+      setMessages(previous => [...previous, { role: "assistant", content: `Geometry audit input rejected: ${error instanceof Error ? error.message : "valid JSON rows are required"}` }]);
+    }
+  };
 
   const recordProtocolRun = (run: ProtocolLedgerRun) => {
     setProtocolRuns(previous => [...previous.filter(existing => existing.method !== run.method), run]);
@@ -867,6 +1082,24 @@ export default function SportsHorary() {
     }
   };
 
+  const handleCoordinateComparison = () => {
+    const dateMatch = eventDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const year = dateMatch ? Number(dateMatch[1]) : Number.NaN;
+    const month = dateMatch ? Number(dateMatch[2]) : Number.NaN;
+    const day = dateMatch ? Number(dateMatch[3]) : Number.NaN;
+    const hour = Number(eventHour);
+    const minute = Number(eventMinute);
+    const latitude = Number(venueLatitude);
+    const longitude = Number(venueLongitude);
+    if (!dateMatch || !eventHour.trim() || !eventMinute.trim() || !venueLatitude.trim() || !venueLongitude.trim()
+      || !Number.isInteger(hour) || hour < 0 || hour > 23 || !Number.isInteger(minute) || minute < 0 || minute > 59
+      || !Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+      setMessages(previous => [...previous, { role: "assistant", content: "The coordinate comparison needs the exact event date, local time, and stadium latitude/longitude. It will not fill missing fields from a city center." }]);
+      return;
+    }
+    calculateCoordinateComparison.mutate({ year, month, day, hour, minute, latitude, longitude, altitude: 0, venueName: venueName.trim() || "Declared event venue" });
+  };
+
   const buildStrictEventRecord = () => {
     const dateMatch = eventDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     const year = dateMatch ? Number(dateMatch[1]) : Number.NaN;
@@ -942,7 +1175,7 @@ export default function SportsHorary() {
       return;
     }
 
-    if (!calculatedChart?.planets || !calculatedChart?.houses?.cusps) {
+    if (!calculatedChart?.planets || !calculatedChart?.domeAxes?.houseCusps) {
       setMessages([...next, {
         role: "assistant",
         content: "Cluster requires a generated exact topocentric event chart. Enter the local event time and stadium coordinates, calculate the chart, inspect the raw-longitude audit, then ask. Text-only or manually altered placement rows are not scored.",
@@ -953,7 +1186,7 @@ export default function SportsHorary() {
     setEventMethodResult(null);
     setPanchangaResult(null);
     setGodAgentResult(null);
-    if (calculatedChart && calculatedChart.planets && calculatedChart.houses?.cusps) {
+    if (calculatedChart && calculatedChart.planets && calculatedChart.domeAxes?.houseCusps) {
       askWithChart.mutate({
         question: content,
         planets: calculatedChart.planets.map((p: any) => {
@@ -964,7 +1197,7 @@ export default function SportsHorary() {
             longitudeSource: p.longitudeSource,
           };
         }),
-        houseCusps: calculatedChart.houses.cusps,
+        houseCusps: calculatedChart.domeAxes.houseCusps,
         favoriteName: favorite || undefined,
         challengerName: challenger || undefined,
         mapOrientation,
@@ -1174,6 +1407,13 @@ export default function SportsHorary() {
           >
             {calculateChart.isPending ? "Calculating..." : "✦ Calculate Event Chart ✦"}
           </button>
+          <button
+            onClick={handleCoordinateComparison}
+            disabled={calculateCoordinateComparison.isPending || !eventDate}
+            className="mb-4 w-full rounded-lg border border-primary/55 bg-card/80 p-2 text-sm font-medium text-primary transition hover:bg-primary/10 disabled:opacity-50"
+          >
+            {calculateCoordinateComparison.isPending ? "Comparing coordinate views..." : "Inspect dome-model vs conventional tropical placements"}
+          </button>
 
           <textarea
           value={transitInput}
@@ -1214,7 +1454,7 @@ export default function SportsHorary() {
                 <tbody>
                   {calculatedChart.planets.map((planet: any) => {
                     const rawLongitude = normalizeLongitude(planet.eclipticLon ?? 0);
-                    const clusterHouse = equalHouseFromAscendant(rawLongitude, calculatedChart.houses.ascendant);
+                    const clusterHouse = equalHouseFromAscendant(rawLongitude, calculatedChart.domeAxes.ascendant);
                     return <tr key={planet.name} className="border-t border-border/60">
                       <td className="px-3 py-2 font-medium">{planet.name}</td>
                       <td className="px-3 py-2 font-mono">{rawLongitude.toFixed(4)}°</td>
@@ -1228,6 +1468,51 @@ export default function SportsHorary() {
               </table>
             </div>
           </section>}
+          <GodAgentSeasonalSynergyPanel
+            result={godAgentSeasonalSynergy}
+            isPending={runGodAgentSeasonalSynergy.isPending}
+            onRun={() => {
+              const [year, month, day] = eventDate.split("-").map(Number);
+              const [latitude, longitude] = [Number(venueLatitude), Number(venueLongitude)];
+              runGodAgentSeasonalSynergy.mutate({
+                year, month, day,
+                hour: Number(eventHour),
+                minute: Number(eventMinute),
+                latitude,
+                longitude,
+                localModelAngleDegrees: Number(localSiderealAngle),
+                observerDistanceFromPoleMiles: Number(observerDistance),
+                orientation: mapOrientation,
+              });
+            }}
+          />
+          <SeasonalRadiusAuditPanel
+            audit={seasonalRadiusAudit}
+            eventDate={eventDate}
+            localSiderealAngle={localSiderealAngle}
+            observerDistance={observerDistance}
+            setLocalSiderealAngle={setLocalSiderealAngle}
+            setObserverDistance={setObserverDistance}
+            isPending={runSeasonalRadiusAudit.isPending}
+            onRun={() => {
+              const [year, month, day] = eventDate.split("-").map(Number);
+              runSeasonalRadiusAudit.mutate({
+                year,
+                month,
+                day,
+                localSiderealAngleDegrees: Number(localSiderealAngle),
+                observerDistanceFromPoleMiles: Number(observerDistance),
+              });
+            }}
+          />
+          {coordinateComparison && <CoordinateComparisonPanel comparison={coordinateComparison} />}
+          <FirmamentGeometryAuditPanel
+            audit={firmamentGeometryAudit}
+            positionsJson={firmamentPositionsJson}
+            setPositionsJson={setFirmamentPositionsJson}
+            isPending={runFirmamentGeometryAudit.isPending}
+            onRun={handleFirmamentGeometryAudit}
+          />
         </> : <p className="mb-4 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">The selected method calculates its own named Placidus event chart when you submit a question. The manual Cluster/Territorial placement box is intentionally excluded.</p>}
 
         {(result || eventMethodResult || panchangaResult || godAgentResult) && (

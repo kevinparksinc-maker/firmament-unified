@@ -28,6 +28,8 @@ import { NatalPlacements } from "@/components/NatalPlacements";
 import FirmamentEngine from "@/components/FirmamentEngine";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 import { ChartWheel } from "@/components/ChartWheel";
+import { ChartTransparency } from "@/components/ChartTransparency";
+import { ChartTransparencyExtras } from "@/components/ChartTransparencyExtras";
 import { AppsHub } from "@/components/AppsHub";
 import { mergeOcrText } from "@/lib/mergeOcrText";
 import {
@@ -819,7 +821,7 @@ export default function Home() {
   }, []);
 
   const generateReading = trpc.ai.interpretChart.useMutation();
-  const askHorary = trpc.horary.ask.useMutation();
+  const askChartScholar = trpc.ai.chartScholar.useMutation();
   const followUp = trpc.horary.followUp.useMutation();
 
   async function sendChat(content: string) {
@@ -832,10 +834,12 @@ export default function Home() {
     ];
     setChatHistory(newHistory);
     try {
-      const result = await askHorary.mutateAsync({
+      const natalEvidence = [natalInput, engineResult ? JSON.stringify(engineResult.natal) : ""].filter(Boolean).join("\n\nSTRUCTURED NATAL EVIDENCE:\n");
+      const transitEvidence = [transitInput, engineResult ? JSON.stringify(engineResult.transits) : ""].filter(Boolean).join("\n\nSTRUCTURED TRANSIT EVIDENCE:\n");
+      const result = await askChartScholar.mutateAsync({
         question: userMsg,
-        natalPlacements: natalInput || undefined,
-        transitPlacements: transitInput || undefined,
+        natalContext: natalEvidence || "No natal chart evidence supplied.",
+        transitContext: transitEvidence || undefined,
         history: chatHistory.slice(-10),
       });
       setChatHistory([
@@ -1154,7 +1158,11 @@ export default function Home() {
 
       {/* Natal Placements Panel — shows after birth data calculated */}
       {snowGlobePlanets.length > 0 && (
-        <NatalPlacements planets={snowGlobePlanets} />
+        <>
+          <NatalPlacements planets={snowGlobePlanets} />
+          <ChartTransparency planets={snowGlobePlanets as any} title="Complete natal chart — houses, placements, and meanings" subtitle="This is the full chart record: twelve houses, sign sequence, every calculated placement, nakshatra and pada context, dignities, and a detailed explanation of how each placement expresses." />
+          {engineResult && <ChartTransparencyExtras natal={engineResult.natal} transits={engineResult.transits} activations={engineResult.activations} />}
+        </>
       )}
 
       {/* Input grid */}
@@ -1450,16 +1458,16 @@ export default function Home() {
               alignItems: "center",
             }}
           >
-            <span>✦ THE HORARY ORACLE ✦</span>
-            <span style={{ fontSize: "9px", color: "var(--silver-dim)", letterSpacing: "2px" }}>FOLLOW-UP QUESTIONS</span>
+            <span>✦ CHART SCHOLAR ✦</span>
+            <span style={{ fontSize: "9px", color: "var(--silver-dim)", letterSpacing: "2px" }}>DEEP CHART CONVERSATION</span>
           </div>
           <AIChatBox
             messages={chatHistory}
             onSendMessage={sendChat}
             isLoading={chatLoading}
             height="500px"
-            placeholder="Ask your follow-up questions. What else do you wish to know about this reading?"
-            emptyStateMessage="The oracle awaits your inquiry. Deepen your understanding with a follow-up question."
+            placeholder="Ask Chart Scholar anything about your planets, houses, nakshatras, aspects, karma, or transits."
+            emptyStateMessage="Chart Scholar is ready. Ask a deep question about the chart and the evidence behind the interpretation."
             className="rounded-t-none border-t-0"
           />
         </div>

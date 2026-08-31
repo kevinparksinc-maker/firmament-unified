@@ -188,7 +188,7 @@ const NAKSHATRA_DATA: Record<
   },
 };
 
-const SIGN_QUALITIES: Record<string, string> = {
+export const SIGN_QUALITIES: Record<string, string> = {
   Aries: "initiating, direct, combative — acts before it thinks",
   Taurus: "grounding, patient, fixed — holds its position",
   Gemini: "dual, restless, connective — moves between worlds",
@@ -294,10 +294,21 @@ function ordinal(n: number): string {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-function getNakshatra(absoluteDegree: number | null): string | null {
+export function getNakshatraDetails(absoluteDegree: number | null): { name: string; ruler: string; pada: number; archetype: string; shakti: string; shadow: string } | null {
   if (absoluteDegree === null || isNaN(absoluteDegree)) return null;
-  const index = Math.floor((absoluteDegree % 360) / (360 / 27));
-  return NAKSHATRA_SEQUENCE[index] ?? null;
+  const normalized = ((absoluteDegree % 360) + 360) % 360;
+  const span = 360 / 27;
+  const index = Math.min(26, Math.floor(normalized / span));
+  const name = NAKSHATRA_SEQUENCE[index];
+  const data = NAKSHATRA_DATA[name];
+  if (!data) return null;
+  const pada = Math.min(4, Math.floor((normalized - index * span) / (span / 4)) + 1);
+  const lords = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
+  return { name, ruler: lords[index % lords.length]!, pada, archetype: data.name, shakti: data.shakti, shadow: data.shadow };
+}
+
+function getNakshatra(absoluteDegree: number | null): string | null {
+  return getNakshatraDetails(absoluteDegree)?.name ?? null;
 }
 
 function getChartRulers(natal: Record<string, PlanetPlacement>): string[] {

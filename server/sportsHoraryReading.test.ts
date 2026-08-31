@@ -30,4 +30,24 @@ describe("legacy Cluster Equal House normalization", () => {
       expect.objectContaining({ planet: "Ketu", house: 4 }),
     ]));
   });
+
+  it("uses the declared dome Ascendant when supplied", () => {
+    const domeAscendant = 229.7519;
+    const chart = {
+      Sun: { planet: "Sun", degree: 21.9954, sign: "Aquarius", house: 11, rx: false, combust: false, cazimi: false, eclipticLon: 321.9954, raw: "", kind: "transit" as const },
+      Pluto: { planet: "Pluto", degree: 17.7679, sign: "Scorpio", house: 7, rx: false, combust: false, cazimi: false, eclipticLon: 227.7679, raw: "", kind: "transit" as const },
+    };
+
+    const normalized = assignEqualHousesToChart(chart, domeAscendant);
+    const chartData = buildChartData(chart, domeAscendant);
+
+    expect(normalized.Sun.house).toBe(4);
+    expect(normalized.Pluto.house).toBe(12);
+    expect(chartData.houseAudit[0]).toEqual(expect.objectContaining({ house: 1, cuspSign: "Scorpio" }));
+    expect(chartData.planetsInHouses).toEqual(expect.arrayContaining([
+      expect.objectContaining({ planet: "Sun", house: 4 }),
+      expect.objectContaining({ planet: "Pluto", house: 12 }),
+    ]));
+  });
 });
+

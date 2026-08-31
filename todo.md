@@ -171,3 +171,35 @@
 - [x] Replace the legacy geocentric ecliptic-longitude source with a documented topocentric observer-relative ecliptic vector for the planet rows scored by Cluster/Territorial/KP; label the coordinate source, test the Moon parallax-sensitive case, and rerun Tyson–Douglas before interpreting its result.
 - [x] Remove the lossy legacy Cluster text round-trip that rounds topocentric longitudes and forwards Whole Sign house labels into a parser; pass exact structured planet coordinates and the exact Ascendant directly to the scorer, then add end-to-end regression coverage.
 - [x] Replace the legacy Cluster city-center-only observer input with explicit venue latitude and longitude fields (city presets may prefill only); preserve the exact coordinates in the visible audit and rerun Tyson–Douglas from Tokyo Dome coordinates.
+- [ ] Publish a side-by-side Tyson–Douglas legacy Cluster audit showing the complete standard and inverse raw coordinates, Equal House assignments, layer votes, Territorial reports, KP evidence, invariant geometry, and changed rule effects without calling either orientation predictive proof.
+- [ ] Add a non-scoring Tyson–Douglas coordinate comparison that shows the declared dome-model topocentric placements and map coordinates alongside a separately named conventional tropical astronomical reference, with shared frozen input and full source labels.
+- [x] Deliver the already calculated frozen Tyson–Douglas dome-model and conventional tropical placement records directly, before waiting on optional interface build verification.
+- [ ] Resolve the screenshot-confirmed chart-identity conflict: the dome-model panel shows ASC 229.7519° Scorpio while the Territorial panel shows ASC 16.55° Aries; one selected Tyson–Douglas chart must expose one declared Ascendant source, or clearly isolate separate reference charts before scoring.
+- [ ] Make Territorial/KP consume the same declared dome-model Ascendant and Equal House placements shown in the user-facing 1–12 list; expose all H1–H12 contributions and prevent the conventional reference Ascendant from entering the dome-model score.
+- [ ] Ensure dome-based Territorial scoring never consumes the conventional Placidus Ascendant or houses; pass only the declared direct-axis dome Ascendant and dome Equal House placements, then expose the resulting H1–H12 evidence.
+- [ ] Unify applicable Sports layers behind one canonical dome event-chart record: one UTC instant, exact venue observer, dome Ascendant, H1–H12 placements, and raw coordinates; prevent conventional Placidus or independently rebuilt charts from entering any dome-scored layer.
+- [ ] Present the full frozen dome-model Tyson–Douglas chart in one uninterrupted H1–H12 table with each house span and every planetary/point assignment, without inserting Placidus or other reference-house data.
+- [x] Implement an isolated ancient-horizon dome Ascendant path with a configurable seasonal solar-radius function, explicit constants, full audit fields, and no silent replacement of the existing dome calculation.
+- [x] Run the exact Territorial/Cluster family framework against the Ancient-Horizon seasonal-radius Tyson–Douglas house lineup and compare Side A/Side B evidence without overwriting the prior topocentric result.
+- [x] Preserve topocentric Tokyo Dome planetary coordinates in the Ancient-Horizon Territorial variant and add a separate fixed-background God View ASC-versus-DSC audit layer without blending methods.
+- [x] Implement a God–Agent synergy matrix that cross-maps fixed-background God sectors with topocentric Ancient-Horizon Agent house families and reports separate support/conflict energy by side.
+- [x] Present God View as the fixed natal/background field and the topocentric Ancient-Horizon Agent View as the event/transit field, with planet-by-planet synergy explanations and visible rule contributions.
+- [x] Run the Ancient-Horizon Territorial/Cluster comparison on the frozen Tyson–Douglas topocentric chart and compare it with the prior Territorial and God–Agent results.
+- [x] Run the Ancient-Horizon Territorial/Cluster Tyson–Douglas chart in exact 180-degree inverse orientation and compare it separately with the standard result.
+- [x] Run God–Agent natal/transit-style synthesis in standard and inverse-180 orientations and compare its cross-view energy with the Territorial scorecards.
+- [x] Add visible aspect evidence to the God–Agent synthesis: planet pair, raw separation, aspect, orb, motion state, and separate support/strain interpretation without changing method scores.
+- [x] Make a complete H1–H12 house/sign/planet/raw-longitude/family table a default visible output for Sports Horary standard and inverse-180 chart runs.
+- [ ] Make full natal and event chart evidence visible by default: H1–H12 signs/spans/planets, raw coordinates, aspects, nodes, fixed stars, nakshatras, dignities, karmic indicators, and rule contributions.
+- [ ] Expand default natal and event readings so every planet/point shows sign, degree, house, nakshatra, pada, ruler, and detailed planet-sign-house-nakshatra meaning; expand every house with its sign, ruler, occupants, themes, and rule trace.
+- [x] Add expanded natal aspect and fixed-star tables with raw geometry/proximity evidence.
+- [x] Add house-ruler and dispositor-chain explanations for every house.
+- [x] Add full transit-to-natal comparison cards with raw positions, derived aspects, house activation, nakshatra context, and detailed interpretation.
+- [x] Add a dedicated multi-turn Chart Scholar chat that receives full natal/transit evidence, answers deep questions with exact chart-row references, and separates calculations from interpretation.
+- [ ] Verify and repair the stale/wrong preview issue preventing the new natal, transit, and Chart Scholar changes from appearing to the user.
+- [ ] Preserve strict separation between Firmament sports horary/prediction features and Lumen Atlas natal/transit chart features; do not copy domain-specific layers across apps.
+- [ ] Integrate the supplied orientation-safe `FirmamentPosition` contract: fixed North/East/South/West projection anchors, H1=East decreasing-azimuth houses, cosine seasonal ring radius without obliquity terminology, and optional radial aspect strength, with source provenance preserved.
+- [ ] Provide a declared radius field for each Firmament source (Zetetic sky, J2000 God View, Agent View) before enabling radial-strength UI; do not infer radius from screen x/y, altitude, or ecliptic longitude.
+- [ ] Add Sports Horary controls for selecting the source mode and submitting verified `FirmamentPosition` rows to the geometry audit procedure.
+- [ ] Prepare Firmament as the active sports deliverable and save its own correct checkpoint without altering Lumen Atlas.
+- [ ] Freeze explicit radius semantics and provenance for Zetetic sky, J2000 God View, and Agent View; reject radial strength when radius is missing.
+- [ ] Add Sports Horary controls to submit verified `FirmamentPosition` rows to the fixed-frame geometry audit.

@@ -32,6 +32,7 @@ type EphemerisPlanet = {
 type EphemerisChart = {
   planets: EphemerisPlanet[];
   houses: { cusps: number[] };
+  domeAxes: { ascendant: number; houseCusps: number[]; coordinateSource: string };
 };
 
 async function callTrpc(path: string, input: unknown) {
@@ -68,8 +69,8 @@ const eventChart = (await callTrpc("ephemeris.calculate", {
   altitude: 0,
 })) as EphemerisChart;
 
-if (!Array.isArray(eventChart.planets) || !Array.isArray(eventChart.houses?.cusps)) {
-  throw new Error("Legacy chart construction did not return planets and house cusps.");
+if (!Array.isArray(eventChart.planets) || !Array.isArray(eventChart.domeAxes?.houseCusps)) {
+  throw new Error("Legacy chart construction did not return planets and dome-model house cusps.");
 }
 
 const legacyChartInput = {
@@ -92,7 +93,7 @@ const legacyChartInput = {
     eclipticLon: planet.eclipticLon ?? 0,
     longitudeSource: planet.longitudeSource ?? "topocentric-apparent-ecliptic",
   })),
-  houseCusps: eventChart.houses.cusps,
+  houseCusps: eventChart.domeAxes.houseCusps,
 };
 
 const request = {
