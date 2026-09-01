@@ -25,7 +25,8 @@ import {
   isNight, 
   calculateCanonicalArabicLots, 
   getCanonicalDignityScore,
-  calculateTopocentricHouse 
+  calculateTopocentricHouse,
+  assignLotToHouse,
 } from "./astrologyCore";
 import {
   upachayaGrowthLayer,
@@ -184,9 +185,12 @@ function whichSide(house: number, config: ClusterConfig): "A" | "B" | "neutral" 
 }
 
 /**
- * Assign house numbers to Arabic Lots based on their longitude
+ * Compatibility wrapper for callers that still provide lots plus cusp longitudes.
+ * The canonical helper remains the single source of house-boundary behavior.
  */
-// Removed assignHousesToLots in favor of astrologyCore.assignLotToHouse
+export function assignHousesToLots<T extends { longitude: number }>(lots: T[], houseCusps: number[]) {
+  return lots.map((lot) => ({ ...lot, house: assignLotToHouse(lot.longitude, houseCusps) }));
+}
 
 function getDignityStatus(placement: SportsHoraryPlacement): DignityStatus {
   const planet = placement.planet;
@@ -236,36 +240,9 @@ function temperamentVolatility(nakshatraName: string): number {
 // ─────────────────────────────────────────────────────────────────────────
 
 export function calculateFullPrediction(chart: ChartData, config: ClusterConfig): PredictionResult {
-  // ──── PRE-FLIGHT: FIXED DOME / STATIONARY EARTH OVERRIDE
-  if (config.fixedDomeMode) {
-    // Re-assign each planet's HOUSE based on its azimuth (observer-relative —
-    // this is legitimate, houses rotate with the sky as seen from a given
-    // place/time). Do NOT touch sign or degree here: those come only from
-    // the planet's ecliptic longitude on the fixed firmament grid and must
-    // never be recalculated from azimuth. A planet's sign never drifts with
-    // time of day or observer location — only its house does.
-    chart.planetsInHouses = chart.planetsInHouses.map(p => {
-      if (p.azimuth !== undefined) {
-        const topo = calculateTopocentricHouse(p.azimuth);
-        return { ...p, house: topo.house };
-      }
-      return p;
-    });
-
-    // Re-assign house lords based on fixed 30-degree azimuth segments
-    // In a fixed dome, House 1 is always 0-30 deg Azimuth, etc.
-    chart.houseLords = chart.houseLords.map(l => {
-      const placement = chart.planetsInHouses.find(p => p.planet === l.lordPlanet);
-      if (placement) {
-        return { ...l, house: placement.house, placement };
-      }
-      return l;
-    });
-
-    // Fix house cusps to 30-degree increments for Arabic Lot assignment
-    chart.houses = Array.from({ length: 12 }, (_, i) => ({ house: i + 1, degree: i * 30 }));
-  }
-
+  // Fixed-dome mode preserves the upstream local-horizon house assignments.
+  // Planetary longitudes use the permanent zero-tilt dome; Ascendant and
+  // whole-sign houses are individualized before this scoring layer runs.
   const breakdown: LayerBreakdown[] = [];
 
   // ──── LAYER 1: TERRITORIAL SCORING (Canonical Rules)
