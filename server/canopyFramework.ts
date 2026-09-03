@@ -1,4 +1,5 @@
 import { bound360, calculateCanopyAscendant, wholeSignHouseForLongitude } from "./canopyFirmamentEngine";
+import { ChartMode, createFrameContext, type TopocentricComparisonData } from "./canopyIntegration";
 import { calculateCanopyLots, sectFromSunAltitude, type SectMode } from "./canopyLots";
 import { buildCanopySportsAudit } from "./canopySportsEngine";
 import { mansionForLongitude } from "./lunarMansion28";
@@ -14,9 +15,19 @@ export interface CanopyFrameworkInput {
   saturnLongitude: number;
   sunAltitude?: number;
   sect?: SectMode;
+  chartMode?: ChartMode;
+  topocentricComparison?: TopocentricComparisonData;
 }
 
 export function calculateCanopyFramework(input: CanopyFrameworkInput) {
+  const chartMode = input.chartMode ?? ChartMode.CANOPY_LOCAL;
+  if (chartMode !== ChartMode.CANOPY_LOCAL) {
+    throw new Error("calculateCanopyFramework requires ChartMode.CANOPY_LOCAL; use the existing standard topocentric path for STANDARD_TOPOCENTRIC.");
+  }
+  const frame = createFrameContext(chartMode, input.topocentricComparison, {
+    latitudeDegrees: input.latitudeDegrees,
+    longitudeDegrees: input.longitudeDegrees,
+  });
   const ascendantAudit = calculateCanopyAscendant(input.utcMs, input.latitudeDegrees, input.longitudeDegrees);
   const sect = input.sect ?? (input.sunAltitude === undefined ? "day" : sectFromSunAltitude(input.sunAltitude));
   const lots = calculateCanopyLots({
@@ -31,7 +42,7 @@ export function calculateCanopyFramework(input: CanopyFrameworkInput) {
   const lunarMansion = mansionForLongitude(input.moonLongitude);
   const sports = buildCanopySportsAudit(lots.lotOfVictory.longitude, lots.lotOfStrife.longitude, ascendantAudit.trueAscendant);
   return {
-    frame: "fixed-canopy-firmament",
+    frame,
     ascendant: ascendantAudit,
     planets: {
       sun: { longitude: bound360(input.sunLongitude), house: wholeSignHouseForLongitude(input.sunLongitude, ascendantAudit.trueAscendant) },
@@ -44,6 +55,8 @@ export function calculateCanopyFramework(input: CanopyFrameworkInput) {
     lots,
     sports,
     provenance: {
+      chartMode,
+      topocentricComparisonRetained: input.topocentricComparison !== undefined,
       rawEphemerisLongitudesUnchanged: true,
       canopyClockIsFrameOrientation: true,
       sportsLayersExcludedFromPersonalNatalInterpretation: true,

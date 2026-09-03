@@ -3,6 +3,7 @@ import { calculateCanopyAscendant, calculateDueEastAscendant, calculateLocalCano
 import { calculateCanopyLots, sectFromSunAltitude } from "./canopyLots";
 import { AWAY_TERRITORY_HOUSES, HOME_TERRITORY_HOUSES, evaluateStrifeLot, evaluateVictoryLot } from "./canopySportsEngine";
 import { calculateCanopyFramework } from "./canopyFramework";
+import { ChartMode, ARCHIVED_FIXTURES, getCanopyCalibration } from "./canopyIntegration";
 import { COMPLETE_28_MANSION_TABLE, mansionForLongitude } from "./lunarMansion28";
 
 describe("confirmed canopy-firmament framework", () => {
@@ -74,6 +75,32 @@ describe("confirmed canopy-firmament framework", () => {
     expect(result.lots.partOfFortune.formula).toBe("Ascendant + Moon - Sun");
     expect(result.lunarMansion.index).toBe(9);
     expect(result.sports.homeAssignment.house).toBe(1);
+    expect(result.frame.chartMode).toBe(ChartMode.CANOPY_LOCAL);
+    expect(result.frame.fixedCalibrationWarning).toBe(false);
+    expect(result.provenance.topocentricComparisonRetained).toBe(false);
+    expect(getCanopyCalibration().id).toBe("v1.0_dallas_j2000");
+    expect(ARCHIVED_FIXTURES.alignment212476.status).toBe("deprecated");
+    expect(calculateCanopyFramework({
+      utcMs: dallasUtcMs,
+      latitudeDegrees: 40,
+      longitudeDegrees: -75,
+      sunLongitude: 237,
+      moonLongitude: 110,
+      jupiterLongitude: 341,
+      marsLongitude: 340,
+      saturnLongitude: 249,
+    }).frame.fixedCalibrationWarning).toBe(true);
+    expect(() => calculateCanopyFramework({
+      utcMs: dallasUtcMs,
+      latitudeDegrees: dallasLatitude,
+      longitudeDegrees: dallasLongitude,
+      sunLongitude: 237,
+      moonLongitude: 110,
+      jupiterLongitude: 341,
+      marsLongitude: 340,
+      saturnLongitude: 249,
+      chartMode: ChartMode.STANDARD_TOPOCENTRIC,
+    })).toThrow("requires ChartMode.CANOPY_LOCAL");
   });
 
   it("uses only the confirmed Home 1/2/11 and Away 7/8/9 territories", () => {

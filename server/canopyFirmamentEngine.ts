@@ -10,7 +10,9 @@ export const J2000_EPOCH_MS = Date.UTC(2000, 0, 1, 12, 0, 0, 0);
 export const CANOPY_SPEED_DPS = 360 / 86164.0905;
 export const SOLAR_SPEED_DPS = 360 / 86400;
 export const ECLIPTIC_OBLIQUITY_DEG = 23.4392911;
-export const ALIGNMENT_CORRECTION_DEG = 106.406;
+import { getCanopyCalibration } from "./canopyIntegration";
+
+export const ALIGNMENT_CORRECTION_DEG = getCanopyCalibration().alignmentCorrectionDegrees;
 export const DALLAS_ASCENDANT_FIXTURE_DEG = 298;
 
 export function bound360(degrees: number): number {
@@ -52,18 +54,18 @@ export interface CanopyAscendantAudit {
   equation: string;
 }
 
-export function calculateCanopyAscendant(utcMs: number, latitudeDegrees: number, longitudeDegrees: number): CanopyAscendantAudit {
+export function calculateCanopyAscendant(utcMs: number, latitudeDegrees: number, longitudeDegrees: number, alignmentCorrection = ALIGNMENT_CORRECTION_DEG): CanopyAscendantAudit {
   const canopyClock = calculateCanopyClock(utcMs);
   const localCanopyPosition = calculateLocalCanopyPosition(canopyClock, longitudeDegrees);
   const rawGeometricAscendant = calculateDueEastAscendant(localCanopyPosition, latitudeDegrees);
-  const trueAscendant = bound360(rawGeometricAscendant + ALIGNMENT_CORRECTION_DEG);
+  const trueAscendant = bound360(rawGeometricAscendant + alignmentCorrection);
   return {
     utcMs,
     elapsedSeconds: calculateElapsedSeconds(utcMs),
     canopyClock,
     localCanopyPosition,
     rawGeometricAscendant,
-    alignmentCorrection: ALIGNMENT_CORRECTION_DEG,
+    alignmentCorrection,
     trueAscendant,
     latitudeDegrees,
     longitudeDegrees,
