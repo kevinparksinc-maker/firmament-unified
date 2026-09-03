@@ -65,3 +65,45 @@
 - [x] Add layer unit tests and disabled-score invariance coverage
 - [ ] Rerun the full test suite and Tyson–Douglas benchmark after integration
 - [x] Document experimental, unavailable, and intentionally separate layers
+
+## New framework specification
+
+- [x] Formalize the attached J2000 canopy and due-east Ascendant contract
+- [x] Add a complete, validated 28-mansion registry without placeholder entries
+- [x] Add auditable Part of Fortune, Victory, and Strife Lot outputs
+- [ ] Preserve topocentric source provenance while separating display frame from prediction layers
+- [x] Add framework regression fixtures for the Dallas chart and sports event charts
+- [ ] Reconcile the new framework with God View, Agent View, and inverse-180 rules
+
+## Confirmed new framework implementation
+
+- [x] Implement the validated Dallas 298° Capricorn Ascendant baseline and due-east/local-zenith geometry contract
+- [x] Keep raw ephemeris longitudes separate from mechanical canopy speed calculations
+- [x] Replace the placeholder lunar-station mapping with a complete 28-station registry
+- [x] Implement Whole Sign Part of Fortune with day/night sect branching
+- [x] Implement Lot of Victory and Lot of Strife as sports-only layers
+- [x] Bind Home to H1 and Away to H7 while scoring Home 1/2/11 and Away 7/8/9 only
+- [x] Add neutral handling for Victory Lot placements outside both quadrants
+- [x] Expose the new framework’s formulas and provenance in the sports audit output
+- [x] Keep Lumen Atlas limited to personal Part of Fortune display; do not import sports scoring
+- [x] Add focused framework tests and rerun relevant regressions
+
+## Canopy alignment offset
+
+- [ ] Validate CANOPY_ALIGNMENT_OFFSET = 212.476° against the supplied due-east Ascendant equation
+- [x] Record the derived canopy-LST transformation and its Dallas 298.000° fixture result
+- [ ] Reject silent fallback to standard sidereal time when the canopy frame is selected
+
+## Validation blocker discovered
+
+- [x] Resolve the attachment’s inconsistent Dallas canopy-clock arithmetic: shown inputs yield local canopy position 283.620°, not 191.594°
+- [x] Resolve the supplied due-east equation mismatch: the corrected sequence uses local position 283.620° → raw Ascendant 191.594° → 298°
+- [ ] Do not activate the new Ascendant in live Firmament predictions until the transform passes an independent Dallas fixture
+
+## Returned framework implementation review
+
+- [x] Validate the returned canopy/LST/Ascendant code against the Dallas 298.000° audit chain
+- [x] Reconcile the returned 28-mansion registry and its source/naming claims with the existing registry
+- [x] Reconcile returned sect, Lot, and sports scoring functions with existing Firmament modules
+- [x] Keep the 106.406° value labeled as an empirical calibration fixture, not a universal physical constant
+- [x] Preserve Lumen Atlas isolation and keep God View, Agent View, and inverse-180 layers separate
